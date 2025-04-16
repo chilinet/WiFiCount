@@ -40,7 +40,10 @@ export default NextAuth({
                 }
 
                 const user = await prisma.user.findUnique({
-                    where: { email: credentials.email }
+                    where: { email: credentials.email },
+                    include: {
+                        node: true
+                    }
                 });
 
                 if (!user) {
@@ -56,7 +59,14 @@ export default NextAuth({
                 return {
                     id: user.id,
                     email: user.email,
-                    name: user.username
+                    name: user.username,
+                    role: user.role,
+                    nodeId: user.nodeId,
+                    node: user.node ? {
+                        id: user.node.id,
+                        name: user.node.name,
+                        category: user.node.category
+                    } : null
                 };
             }
         })
@@ -69,12 +79,18 @@ export default NextAuth({
         async jwt({ token, user }) {
             if (user) {
                 token.id = user.id;
+                token.role = user.role;
+                token.nodeId = user.nodeId;
+                token.node = user.node;
             }
             return token;
         },
         async session({ session, token }) {
             if (session.user) {
                 session.user.id = token.id as string;
+                session.user.role = token.role as string;
+                session.user.nodeId = token.nodeId as string;
+                session.user.node = token.node as any;
             }
             return session;
         }

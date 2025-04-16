@@ -11,7 +11,7 @@ import {
 
 interface DashboardTreeProps {
     nodes: TreeNode[];
-    onNodeSelect?: (node: TreeNode) => void;
+    onNodeSelect: (node: TreeNode) => void;
 }
 
 const getCategoryIcon = (category: string) => {
@@ -29,75 +29,49 @@ const getCategoryIcon = (category: string) => {
     }
 };
 
-const DashboardTree: React.FC<DashboardTreeProps> = ({ nodes, onNodeSelect }) => {
-    const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
-    const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
+export default function DashboardTree({ nodes, onNodeSelect }: DashboardTreeProps) {
+    const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
 
-    const buildTree = (parentId: string | null = null): TreeNode[] => {
-        return nodes
-            .filter((node) => node.parentId === parentId)
-            .map((node) => ({
-                ...node,
-                children: buildTree(node.id),
-            }));
+    const toggleNode = (nodeId: string) => {
+        setExpandedNodes(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(nodeId)) {
+                newSet.delete(nodeId);
+            } else {
+                newSet.add(nodeId);
+            }
+            return newSet;
+        });
     };
 
-    const tree = buildTree();
-
-    const handleNodeClick = (node: TreeNode) => {
-        setSelectedNode(node);
-        if (onNodeSelect) {
-            onNodeSelect(node);
-        }
-    };
-
-    const TreeNodeComponent: React.FC<{ node: TreeNode; level: number }> = ({ node, level }) => {
+    const renderNode = (node: TreeNode) => {
+        const isExpanded = expandedNodes.has(node.id);
         const hasChildren = node.children && node.children.length > 0;
-        const isExpanded = expandedNodes[node.id];
-        const isSelected = selectedNode?.id === node.id;
 
         return (
-            <div className="ml-4">
-                <div
-                    className={`flex items-center space-x-2 p-2 rounded-md cursor-pointer hover:bg-gray-100 ${
-                        isSelected ? 'bg-blue-100' : ''
-                    }`}
-                    style={{ marginLeft: `${level * 1}rem` }}
-                    onClick={() => handleNodeClick(node)}
+            <div key={node.id} className="ml-4">
+                <div 
+                    className="flex items-center py-1 hover:bg-gray-100 cursor-pointer"
+                    onClick={() => onNodeSelect(node)}
                 >
                     {hasChildren && (
                         <button
-                            type="button"
                             onClick={(e) => {
                                 e.stopPropagation();
-                                setExpandedNodes((prev) => ({
-                                    ...prev,
-                                    [node.id]: !prev[node.id],
-                                }));
+                                toggleNode(node.id);
                             }}
-                            className="text-gray-500 hover:text-gray-700"
+                            className="mr-2 text-gray-500 hover:text-gray-700"
                         >
-                            {isExpanded ? (
-                                <ChevronDownIcon className="h-5 w-5" />
-                            ) : (
-                                <ChevronRightIcon className="h-5 w-5" />
-                            )}
+                            {isExpanded ? '▼' : '▶'}
                         </button>
                     )}
-                    {!hasChildren && <div className="w-5" />}
-
-                    {getCategoryIcon(node.category)}
-
-                    <span className={`flex-1 text-gray-700 ${isSelected ? 'font-semibold' : ''}`}>
-                        {node.name}
+                    <span className="text-sm">
+                        {node.name} ({node.category})
                     </span>
                 </div>
-
                 {isExpanded && hasChildren && (
-                    <div>
-                        {node.children.map((child) => (
-                            <TreeNodeComponent key={child.id} node={child} level={level + 1} />
-                        ))}
+                    <div className="ml-4">
+                        {node.children?.map(child => renderNode(child))}
                     </div>
                 )}
             </div>
@@ -105,12 +79,8 @@ const DashboardTree: React.FC<DashboardTreeProps> = ({ nodes, onNodeSelect }) =>
     };
 
     return (
-        <div className="space-y-2">
-            {tree.map((node) => (
-                <TreeNodeComponent key={node.id} node={node} level={0} />
-            ))}
+        <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
+            {nodes.map(node => renderNode(node))}
         </div>
     );
-};
-
-export default DashboardTree; 
+} 

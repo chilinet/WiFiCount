@@ -1,9 +1,10 @@
-import { signIn } from 'next-auth/react';
+import { signIn, useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import { useState } from 'react';
 
 export default function Login() {
     const router = useRouter();
+    const { data: session } = useSession();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -80,6 +81,12 @@ export default function Login() {
                     {error && (
                         <div className="text-red-500 text-sm text-center">
                             {error}
+                        </div>
+                    )}
+
+                    {session?.user?.node && (
+                        <div className="text-sm text-center text-gray-600">
+                            Zugewiesener Kunde: {session.user.node.name}
                         </div>
                     )}
 

@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import DashboardTree from '@/components/DashboardTree';
 import { prisma } from '@/lib/prisma';
-import { TreeNode } from '@prisma/client';
+import { TreeNode } from '@/types/tree';
 import ReactECharts from 'echarts-for-react';
+import { useSession } from 'next-auth/react';
 
 interface Device {
     id: string;
@@ -30,11 +31,57 @@ interface DashboardProps {
 type TimeRange = '7d' | '14d' | '30d' | '3m' | '6m' | '1y';
 
 export default function Dashboard({ nodes }: DashboardProps) {
+    const { data: session } = useSession();
     const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
     const [devices, setDevices] = useState<Device[]>([]);
     const [stats, setStats] = useState<AccessPointStats[]>([]);
     const [timeRange, setTimeRange] = useState<TimeRange>('30d');
     const [isLoading, setIsLoading] = useState(false);
+    const [filteredNodes, setFilteredNodes] = useState<TreeNode[]>([]);
+
+    // Funktion zum Aufbauen der Baumstruktur
+    const buildTree = (nodes: TreeNode[], parentId: string | null = null): TreeNode[] => {
+        return nodes
+            .filter(node => node.parentId === parentId)
+            .map(node => ({
+                ...node,
+                children: buildTree(nodes, node.id)
+            }));
+    };
+
+    useEffect(() => {
+        if (session?.user) {
+            const tree = buildTree(nodes);
+            
+            if (session.user.role === 'SUPERADMIN') {
+                // SUPERADMIN sieht die komplette Struktur
+                setFilteredNodes(tree);
+            } else if (session.user.nodeId) {
+                // ADMIN und USER sehen nur ab ihrem zugewiesenen Node
+                const findNodeAndChildren = (nodes: TreeNode[], nodeId: string): TreeNode[] => {
+                    const result: TreeNode[] = [];
+                    const findNode = (nodes: TreeNode[], targetId: string): TreeNode | null => {
+                        for (const node of nodes) {
+                            if (node.id === targetId) return node;
+                            if (node.children) {
+                                const found = findNode(node.children, targetId);
+                                if (found) return found;
+                            }
+                        }
+                        return null;
+                    };
+
+                    const startNode = findNode(nodes, nodeId);
+                    if (startNode) {
+                        result.push(startNode);
+                    }
+                    return result;
+                };
+
+                setFilteredNodes(findNodeAndChildren(tree, session.user.nodeId));
+            }
+        }
+    }, [session, nodes]);
 
     const getSubordinateAreaIds = (node: TreeNode): string[] => {
         let areaIds: string[] = [];
@@ -51,7 +98,6 @@ export default function Dashboard({ nodes }: DashboardProps) {
             });
         }
         
-        // console.log(areaIds);
         return areaIds;
     };
 
@@ -188,7 +234,7 @@ export default function Dashboard({ nodes }: DashboardProps) {
             
             if (device) {
                 // console.log('Gefundenes Gerät:', device);
-                const area = nodes.find(n => n.id === device.areaId);
+                const area = filteredNodes.find(n => n.id === device.areaId);
                 
                 if (area) {
                     // console.log('Gefundener Bereich:', area);
@@ -376,10 +422,16 @@ export default function Dashboard({ nodes }: DashboardProps) {
                 {/* Linke Seite: Tree */}
                 <div className="w-1/3 p-4 border-r">
                     <h1 className="text-2xl font-bold text-gray-900 mb-4">Struktur</h1>
-                    <DashboardTree 
-                        nodes={nodes} 
-                        onNodeSelect={setSelectedNode}
-                    />
+                    {filteredNodes.length > 0 ? (
+                        <DashboardTree 
+                            nodes={filteredNodes} 
+                            onNodeSelect={setSelectedNode}
+                        />
+                    ) : (
+                        <div className="text-gray-500 text-center">
+                            Keine Struktur verfügbar
+                        </div>
+                    )}
                 </div>
 
                 {/* Rechte Seite: Diagramme */}
@@ -461,7 +513,7 @@ export async function getServerSideProps() {
         });
 
         // Convert Date objects to ISO strings
-        const serializedNodes = nodes.map((node: TreeNode) => ({
+        const serializedNodes = nodes.map((node: any) => ({
             ...node,
             createdAt: node.createdAt.toISOString(),
             updatedAt: node.updatedAt.toISOString()
