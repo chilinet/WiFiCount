@@ -38,6 +38,7 @@ export default function Dashboard({ nodes }: DashboardProps) {
     const [timeRange, setTimeRange] = useState<TimeRange>('30d');
     const [isLoading, setIsLoading] = useState(false);
     const [filteredNodes, setFilteredNodes] = useState<TreeNode[]>([]);
+    const [tree, setTree] = useState<TreeNode[]>([]);
 
     // Funktion zum Aufbauen der Baumstruktur
     const buildTree = (nodes: TreeNode[], parentId: string | null = null): TreeNode[] => {
@@ -50,12 +51,13 @@ export default function Dashboard({ nodes }: DashboardProps) {
     };
 
     useEffect(() => {
+        const builtTree = buildTree(nodes);
+        setTree(builtTree);
+        
         if (session?.user) {
-            const tree = buildTree(nodes);
-            
             if (session.user.role === 'SUPERADMIN') {
                 // SUPERADMIN sieht die komplette Struktur
-                setFilteredNodes(tree);
+                setFilteredNodes(builtTree);
             } else if (session.user.nodeId) {
                 // ADMIN und USER sehen nur ab ihrem zugewiesenen Node
                 const findNodeAndChildren = (nodes: TreeNode[], nodeId: string): TreeNode[] => {
@@ -78,7 +80,7 @@ export default function Dashboard({ nodes }: DashboardProps) {
                     return result;
                 };
 
-                setFilteredNodes(findNodeAndChildren(tree, session.user.nodeId));
+                setFilteredNodes(findNodeAndChildren(builtTree, session.user.nodeId));
             }
         }
     }, [session, nodes]);
@@ -193,14 +195,10 @@ export default function Dashboard({ nodes }: DashboardProps) {
     }, [selectedNode, timeRange]);
 
     const getChartOptions = () => {
-        // console.log('Generiere Chart Optionen...');
-        
         // Erstelle die X-Achse (Daten)
         const dates = [...new Set(stats.map(stat => stat.datum))].sort();
-        // console.log('Verfügbare Daten:', dates);
 
         // Erstelle die aufsummierten Serien
-        // console.log('Berechne Gesamtdaten...');
         const totalSeries = [{
             name: 'Gesamt',
             type: 'bar',
@@ -222,40 +220,27 @@ export default function Dashboard({ nodes }: DashboardProps) {
         }];
 
         // Gruppiere die Daten nach Bereich
-        // console.log('Gruppiere Daten nach Bereichen...');
         const areaData = stats.reduce((acc, stat) => {
-            // console.log('Verarbeite Statistik:', stat);
             const device = devices.find(d => {
                 const deviceMac = d.macAddress.replace(/:/g, '-');
                 const statMac = stat.access_point.replace(/:/g, '-').substring(0, 17);
-                // console.log('Vergleiche MACs:', deviceMac, statMac);
                 return deviceMac === statMac;
             });
             
             if (device) {
-                // console.log('Gefundenes Gerät:', device);
-                const area = filteredNodes.find(n => n.id === device.areaId);
+                const area = nodes.find(n => n.id === device.areaId);
                 
                 if (area) {
-                    // console.log('Gefundener Bereich:', area);
                     if (!acc[area.name]) {
-                        // console.log(`Erstelle neuen Bereich: ${area.name}`);
                         acc[area.name] = [];
                     }
-                    // console.log(`Füge Statistik zu Bereich ${area.name} hinzu`);
                     acc[area.name].push(stat);
-                } else {
-                    console.log('Kein Bereich für Gerät gefunden');
                 }
-            } else {
-                console.log('Kein passendes Gerät gefunden für:', stat.access_point);
             }
             return acc;
         }, {} as Record<string, AccessPointStats[]>);
-        // console.log('Gefundene Bereiche:', Object.keys(areaData));
 
         // Erstelle die Serien für jeden Bereich
-        // console.log('Erstelle Bereichs-Serien...');
         const areaBytesSeries = Object.entries(areaData).map(([areaName, data]) => ({
             name: areaName,
             type: 'bar',
@@ -275,8 +260,6 @@ export default function Dashboard({ nodes }: DashboardProps) {
                     .reduce((sum, stat) => sum + stat.anzahl_sessions, 0);
             })
         }));
-
-        // console.log('Erstelle Chart Konfigurationen...');
 
         const totalOption = {
             title: {
@@ -412,7 +395,6 @@ export default function Dashboard({ nodes }: DashboardProps) {
             series: areaSessionsSeries
         };
 
-        // console.log('Chart Optionen erfolgreich generiert');
         return { totalOption, totalSessionsOption, areaBytesOption, areaSessionsOption };
     };
 

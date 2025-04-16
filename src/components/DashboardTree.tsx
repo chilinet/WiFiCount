@@ -1,12 +1,10 @@
 import { useState } from 'react';
 import { TreeNode } from '@/types/tree';
 import { 
-    ChevronRightIcon, 
-    ChevronDownIcon,
-    BuildingOfficeIcon, // Für STANDORT
-    UserGroupIcon, // Für KUNDE
-    FolderIcon, // Für BEREICH
-    HomeIcon // Für ROOT
+    HomeIcon, 
+    BuildingOfficeIcon, 
+    MapPinIcon, 
+    WifiIcon 
 } from '@heroicons/react/24/outline';
 
 interface DashboardTreeProps {
@@ -19,11 +17,11 @@ const getCategoryIcon = (category: string) => {
         case 'ROOT':
             return <HomeIcon className="h-5 w-5 text-gray-500" />;
         case 'KUNDE':
-            return <UserGroupIcon className="h-5 w-5 text-blue-500" />;
+            return <BuildingOfficeIcon className="h-5 w-5 text-gray-500" />;
         case 'STANDORT':
-            return <BuildingOfficeIcon className="h-5 w-5 text-green-500" />;
+            return <MapPinIcon className="h-5 w-5 text-gray-500" />;
         case 'BEREICH':
-            return <FolderIcon className="h-5 w-5 text-yellow-500" />;
+            return <WifiIcon className="h-5 w-5 text-gray-500" />;
         default:
             return null;
     }
@@ -65,8 +63,10 @@ export default function DashboardTree({ nodes, onNodeSelect }: DashboardTreeProp
                             {isExpanded ? '▼' : '▶'}
                         </button>
                     )}
-                    <span className="text-sm">
-                        {node.name} ({node.category})
+                    {!hasChildren && <div className="w-5" />}
+                    {getCategoryIcon(node.category)}
+                    <span className="ml-2 text-sm text-gray-700">
+                        {node.name}
                     </span>
                 </div>
                 {isExpanded && hasChildren && (
