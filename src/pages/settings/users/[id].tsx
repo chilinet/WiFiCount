@@ -15,6 +15,7 @@ interface EditUserPageProps {
 export default function EditUserPage({ user: initialUser, nodes }: EditUserPageProps) {
     const router = useRouter();
     const [user, setUser] = useState<ExtendedUser>(initialUser);
+    const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -33,7 +34,8 @@ export default function EditUserPage({ user: initialUser, nodes }: EditUserPageP
                     name: user.name,
                     email: user.email,
                     role: user.role,
-                    nodeId: user.nodeId
+                    nodeId: user.nodeId,
+                    password: password || undefined // Only send password if it's not empty
                 }),
             });
 
@@ -52,10 +54,14 @@ export default function EditUserPage({ user: initialUser, nodes }: EditUserPageP
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setUser(prev => ({
-            ...prev,
-            [name]: value
-        }));
+        if (name === 'password') {
+            setPassword(value);
+        } else {
+            setUser(prev => ({
+                ...prev,
+                [name]: value
+            }));
+        }
     };
 
     return (
@@ -95,6 +101,21 @@ export default function EditUserPage({ user: initialUser, nodes }: EditUserPageP
                                 name="email"
                                 value={user.email}
                                 onChange={handleChange}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            />
+                        </div>
+
+                        <div>
+                            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                                Neues Passwort
+                            </label>
+                            <input
+                                type="password"
+                                id="password"
+                                name="password"
+                                value={password}
+                                onChange={handleChange}
+                                placeholder="Leer lassen, um das Passwort nicht zu ändern"
                                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                             />
                         </div>
