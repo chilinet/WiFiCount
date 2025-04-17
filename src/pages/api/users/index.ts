@@ -19,7 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
     } else if (req.method === 'POST') {
         try {
-            const { name, email, password, role } = req.body;
+            const { name, email, password, role, nodeId } = req.body;
 
             // Überprüfe, ob die E-Mail bereits existiert
             const existingUser = await prisma.user.findUnique({
@@ -39,7 +39,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     name,
                     email,
                     password: hashedPassword,
-                    role: role || 'USER'
+                    role: role || 'USER',
+                    nodeId: nodeId || null
                 }
             });
 

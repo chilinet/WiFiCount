@@ -1,19 +1,14 @@
-import '../styles/globals.css';
-import type { AppProps } from 'next/app';
 import { SessionProvider } from 'next-auth/react';
-import { useRouter } from 'next/router';
+import type { AppProps } from 'next/app';
+import Layout from '@/components/Layout';
+import '@/styles/globals.css';
 
 export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
-  const router = useRouter();
-  const isLoginPage = router.pathname === '/login';
-
-  return (
-    <SessionProvider session={session}>
-      {isLoginPage ? (
-        <Component {...pageProps} />
-      ) : (
-        <Component {...pageProps} />
-      )}
-    </SessionProvider>
-  );
+    return (
+        <SessionProvider session={session}>
+            <Layout>
+                <Component {...pageProps} />
+            </Layout>
+        </SessionProvider>
+    );
 } 

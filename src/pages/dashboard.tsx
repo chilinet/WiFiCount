@@ -399,90 +399,88 @@ export default function Dashboard({ nodes }: DashboardProps) {
     };
 
     return (
-        <Layout>
-            <div className="flex h-full">
-                {/* Linke Seite: Tree */}
-                <div className="w-1/3 p-4 border-r">
-                    <h1 className="text-2xl font-bold text-gray-900 mb-4">Struktur</h1>
-                    {filteredNodes.length > 0 ? (
-                        <DashboardTree 
-                            nodes={filteredNodes} 
-                            onNodeSelect={setSelectedNode}
-                        />
-                    ) : (
-                        <div className="text-gray-500 text-center">
-                            Keine Struktur verfügbar
-                        </div>
-                    )}
-                </div>
-
-                {/* Rechte Seite: Diagramme */}
-                <div className="w-2/3 p-4">
-                    <div className="flex justify-between items-center mb-4">
-                        <h1 className="text-2xl font-bold text-gray-900">Statistiken</h1>
-                        <div className="flex space-x-2">
-                            <select
-                                value={timeRange}
-                                onChange={(e) => setTimeRange(e.target.value as TimeRange)}
-                                className="px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                                <option value="7d">7 Tage</option>
-                                <option value="14d">14 Tage</option>
-                                <option value="30d">30 Tage</option>
-                                <option value="3m">3 Monate</option>
-                                <option value="6m">6 Monate</option>
-                                <option value="1y">1 Jahr</option>
-                            </select>
-                        </div>
+        <div className="flex h-full">
+            {/* Linke Seite: Tree */}
+            <div className="w-1/3 p-4 border-r">
+                <h1 className="text-2xl font-bold text-gray-900 mb-4">Struktur</h1>
+                {filteredNodes.length > 0 ? (
+                    <DashboardTree 
+                        nodes={filteredNodes} 
+                        onNodeSelect={setSelectedNode}
+                    />
+                ) : (
+                    <div className="text-gray-500 text-center">
+                        Keine Struktur verfügbar
                     </div>
-                    {selectedNode ? (
-                        <div className="mt-6">
-                            <h2 className="text-lg font-semibold mb-4">
-                                Statistiken für {selectedNode.name} und untergeordnete Bereiche
-                            </h2>
-                            {isLoading ? (
-                                <div className="flex justify-center items-center h-96">
-                                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-                                </div>
-                            ) : stats.length > 0 ? (
-                                <div className="space-y-8">
-                                    <div>
-                                        <ReactECharts
-                                            option={getChartOptions().totalOption}
-                                            style={{ height: '400px' }}
-                                        />
-                                    </div>
-                                    <div>
-                                        <ReactECharts
-                                            option={getChartOptions().totalSessionsOption}
-                                            style={{ height: '400px' }}
-                                        />
-                                    </div>
-                                    <div>
-                                        <ReactECharts
-                                            option={getChartOptions().areaBytesOption}
-                                            style={{ height: '400px' }}
-                                        />
-                                    </div>
-                                    <div>
-                                        <ReactECharts
-                                            option={getChartOptions().areaSessionsOption}
-                                            style={{ height: '400px' }}
-                                        />
-                                    </div>
-                                </div>
-                            ) : (
-                                <p className="text-gray-500">Keine Statistiken verfügbar</p>
-                            )}
-                        </div>
-                    ) : (
-                        <div className="text-center text-gray-500 mt-8">
-                            Bitte wählen Sie einen Knoten aus der Struktur aus
-                        </div>
-                    )}
-                </div>
+                )}
             </div>
-        </Layout>
+
+            {/* Rechte Seite: Diagramme */}
+            <div className="w-2/3 p-4">
+                <div className="flex justify-between items-center mb-4">
+                    <h1 className="text-2xl font-bold text-gray-900">Statistiken</h1>
+                    <div className="flex space-x-2">
+                        <select
+                            value={timeRange}
+                            onChange={(e) => setTimeRange(e.target.value as TimeRange)}
+                            className="px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="7d">7 Tage</option>
+                            <option value="14d">14 Tage</option>
+                            <option value="30d">30 Tage</option>
+                            <option value="3m">3 Monate</option>
+                            <option value="6m">6 Monate</option>
+                            <option value="1y">1 Jahr</option>
+                        </select>
+                    </div>
+                </div>
+                {selectedNode ? (
+                    <div className="mt-6">
+                        <h2 className="text-lg font-semibold mb-4">
+                            Statistiken für {selectedNode.name} und untergeordnete Bereiche
+                        </h2>
+                        {isLoading ? (
+                            <div className="flex justify-center items-center h-96">
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                            </div>
+                        ) : stats.length > 0 ? (
+                            <div className="space-y-8">
+                                <div>
+                                    <ReactECharts
+                                        option={getChartOptions().totalOption}
+                                        style={{ height: '400px' }}
+                                    />
+                                </div>
+                                <div>
+                                    <ReactECharts
+                                        option={getChartOptions().totalSessionsOption}
+                                        style={{ height: '400px' }}
+                                    />
+                                </div>
+                                <div>
+                                    <ReactECharts
+                                        option={getChartOptions().areaBytesOption}
+                                        style={{ height: '400px' }}
+                                    />
+                                </div>
+                                <div>
+                                    <ReactECharts
+                                        option={getChartOptions().areaSessionsOption}
+                                        style={{ height: '400px' }}
+                                    />
+                                </div>
+                            </div>
+                        ) : (
+                            <p className="text-gray-500">Keine Statistiken verfügbar</p>
+                        )}
+                    </div>
+                ) : (
+                    <div className="text-center text-gray-500 mt-8">
+                        Bitte wählen Sie einen Knoten aus der Struktur aus
+                    </div>
+                )}
+            </div>
+        </div>
     );
 }
 

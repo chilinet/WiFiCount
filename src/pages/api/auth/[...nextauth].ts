@@ -56,12 +56,13 @@ export default NextAuth({
                     throw new Error('Ungültiges Passwort');
                 }
 
+                // Ensure all required fields are present and not undefined
                 return {
                     id: user.id,
                     email: user.email,
-                    name: user.username,
-                    role: user.role,
-                    nodeId: user.nodeId,
+                    name: user.username || null,
+                    role: user.role || 'user',
+                    nodeId: user.nodeId || null,
                     node: user.node ? {
                         id: user.node.id,
                         name: user.node.name,
@@ -78,26 +79,40 @@ export default NextAuth({
     callbacks: {
         async jwt({ token, user }) {
             if (user) {
-                token.id = user.id;
-                token.role = user.role;
-                token.nodeId = user.nodeId;
-                token.node = user.node;
+                return {
+                    ...token,
+                    id: user.id,
+                    role: user.role,
+                    nodeId: user.nodeId,
+                    node: user.node,
+                    name: user.name,
+                    email: user.email
+                };
             }
             return token;
         },
         async session({ session, token }) {
-            if (session.user) {
-                session.user.id = token.id as string;
-                session.user.role = token.role as string;
-                session.user.nodeId = token.nodeId as string;
-                session.user.node = token.node as any;
-            }
-            return session;
+            return {
+                ...session,
+                user: {
+                    ...session.user,
+                    id: token.id as string,
+                    name: token.name as string | null,
+                    email: token.email as string,
+                    role: token.role as string,
+                    nodeId: token.nodeId as string | null,
+                    node: token.node as any,
+                    image: null
+                }
+            };
         }
     },
     session: {
         strategy: 'jwt',
         maxAge: 30 * 24 * 60 * 60, // 30 Tage
+    },
+    jwt: {
+        secret: process.env.NEXTAUTH_SECRET,
     },
     secret: process.env.NEXTAUTH_SECRET,
 }); 
