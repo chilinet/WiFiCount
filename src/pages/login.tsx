@@ -1,8 +1,11 @@
 import { signIn, useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import { useState } from 'react';
+import type { ReactElement } from 'react';
+import type { NextPageWithLayout } from '../types/next';
+import Image from 'next/image';
 
-export default function Login() {
+const Login: NextPageWithLayout = () => {
     const router = useRouter();
     const { data: session } = useSession();
     const [email, setEmail] = useState('');
@@ -37,7 +40,14 @@ export default function Login() {
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-md w-full space-y-8">
-                <div>
+                <div className="flex flex-col items-center">
+                    <Image
+                        src="/cnlogo.png"
+                        alt="CHILINET Logo"
+                        width={200}
+                        height={80}
+                        priority
+                    />
                     <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
                         Anmelden
                     </h2>
@@ -103,4 +113,8 @@ export default function Login() {
             </div>
         </div>
     );
-} 
+};
+
+Login.getLayout = (page: ReactElement) => page;
+
+export default Login; 
