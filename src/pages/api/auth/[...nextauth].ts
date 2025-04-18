@@ -13,10 +13,10 @@ async function createTestUser() {
         const hashedPassword = await hash('test123', 12);
         await prisma.user.create({
             data: {
-                username: 'Test User',
+                name: 'Test User',
                 email: 'test@example.com',
                 password: hashedPassword,
-                role: 'admin'
+                role: 'SUPERADMIN'
             }
         });
         console.log('Testbenutzer erstellt');
@@ -38,7 +38,7 @@ export default NextAuth({
                 if (!credentials?.email || !credentials?.password) {
                     throw new Error('Email und Passwort sind erforderlich');
                 }
-
+                console.log('credentials', credentials);
                 const user = await prisma.user.findUnique({
                     where: { email: credentials.email },
                     include: {
@@ -48,6 +48,10 @@ export default NextAuth({
 
                 if (!user) {
                     throw new Error('Benutzer nicht gefunden');
+                }
+
+                if (!user.password) {
+                    throw new Error('Benutzer hat kein Passwort');
                 }
 
                 const isValid = await compare(credentials.password, user.password);
@@ -60,7 +64,7 @@ export default NextAuth({
                 return {
                     id: user.id,
                     email: user.email,
-                    name: user.username || null,
+                    name: user.name || null,
                     role: user.role || 'user',
                     nodeId: user.nodeId || null,
                     node: user.node ? {

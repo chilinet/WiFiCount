@@ -3,9 +3,11 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import { getServerSession, Session } from 'next-auth';
 import { prisma } from '@/lib/prisma';
-import { User, Role } from '@prisma/client';
+import { User } from '@prisma/client';
 import authOptions from '@/pages/api/auth/[...nextauth]';
 import { getToken } from 'next-auth/jwt';
+
+type Role = 'USER' | 'ADMIN' | 'SUPERADMIN';
 
 interface NewUserPageProps {
     nodes: {
@@ -211,7 +213,7 @@ export async function getServerSideProps(context: any) {
     }
 
     try {
-        const nodes = await prisma.TreeNode.findMany({
+        const nodes = await prisma.treeNode.findMany({
             where: {
                 category: 'KUNDE'
             },

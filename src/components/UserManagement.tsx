@@ -93,7 +93,7 @@ export default function UserManagement() {
                 {/* Linke Seitenleiste (1/3 Breite) */}
                 <div className="w-1/3 bg-white shadow-lg min-h-full">
                     <div className="p-6">
-                        <Tree ref={treeRef} onSelectNode={setSelectedNode} />
+                        <Tree ref={treeRef} onNodeSelect={setSelectedNode} initialNodes={[]} />
                     </div>
                 </div>
 

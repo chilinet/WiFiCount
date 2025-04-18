@@ -55,7 +55,7 @@ export default function TreeNodeComponent({
 
     const handleUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
-        await onUpdate(node.id, { name: newName, category: node.category });
+        await onUpdate(node.id, { name: newName, category: node.category as NodeCategory });
         setIsEditing(false);
     };
 
@@ -102,7 +102,7 @@ export default function TreeNodeComponent({
                     )}
                 </button>
 
-                {getCategoryIcon(node.category)}
+                {getCategoryIcon(node.category as NodeCategory)}
 
                 {isEditing ? (
                     <form onSubmit={handleUpdate} className="flex-1">

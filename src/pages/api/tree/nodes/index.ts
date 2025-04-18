@@ -13,6 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             const node = await prisma.treeNode.create({
                 data: {
                     name,
+                    category: 'KUNDE',
                     parent: parentId ? {
                         connect: {
                             id: parentId

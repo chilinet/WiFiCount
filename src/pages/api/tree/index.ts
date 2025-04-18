@@ -13,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 const rootNode = await prisma.treeNode.create({
                     data: {
                         name: 'Chilinet',
-                        category: 'Kunde'
+                        category: 'ROOT'
                     }
                 });
                 return res.status(200).json({
@@ -59,11 +59,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
     } else if (req.method === 'POST') {
         try {
-            const { name, parentId } = req.body;
+            const { name, parentId, category } = req.body;
             const node = await prisma.treeNode.create({
                 data: {
                     name,
-                    parentId
+                    parentId,
+                    category: category || 'KUNDE'
                 }
             });
             res.status(201).json(node);

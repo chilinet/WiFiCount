@@ -10,7 +10,7 @@ type TreeProps = {
     onNodeSelect?: (node: TreeNode) => void;
     onNodeUpdate?: (nodeId: string, updates: { name: string; category: NodeCategory }) => void;
     onNodeDelete?: (nodeId: string) => void;
-    onNodeCreate?: (parentId: string | null, name: string, category: NodeCategory) => void;
+    onNodeCreate?: (parentId: string | null, name: string, category: NodeCategory) => Promise<void>;
 };
 
 export interface TreeRef {
@@ -31,10 +31,10 @@ const flattenTree = (node: TreeNode): TreeNode[] => {
 // Hilfsfunktion zum Sortieren eines TreeNode und seiner Kinder
 const sortTreeNodeByName = (node: TreeNode): TreeNode => {
     return {
-        ...node,
-        children: [...node.children]
-            .sort((a, b) => a.name.localeCompare(b.name, 'de'))
-            .map(child => sortTreeNodeByName(child))
+    ...node,
+    children: [...(node.children ?? [])]
+        .sort((a, b) => a.name.localeCompare(b.name, 'de'))
+        .map(child => sortTreeNodeByName(child))
     };
 };
 
@@ -209,7 +209,7 @@ const Tree = forwardRef<TreeRef, TreeProps>(({
                     onSelect={handleNodeSelect}
                     onUpdate={handleNodeUpdate}
                     onDelete={handleNodeDelete}
-                    onCreate={onNodeCreate}
+                    onCreate={onNodeCreate || (async (parentId: string | null, name: string, category: NodeCategory) => Promise.resolve())}
                     onEditStart={handleEditStart}
                     onEditSubmit={handleEditSubmit}
                     onAddSubmit={handleAddSubmit}
