@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import DashboardTree from '@/components/DashboardTree';
+import Breadcrumbs from '@/components/Breadcrumbs';
 import { prisma } from '@/lib/prisma';
 import { TreeNode } from '@/types/tree';
 import ReactECharts from 'echarts-for-react';
 import { useSession } from 'next-auth/react';
+import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 
 interface Device {
     id: string;
@@ -39,6 +41,7 @@ export default function Dashboard({ nodes }: DashboardProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [filteredNodes, setFilteredNodes] = useState<TreeNode[]>([]);
     const [tree, setTree] = useState<TreeNode[]>([]);
+    const [isStructureOpen, setIsStructureOpen] = useState(true);
 
     // Funktion zum Aufbauen der Baumstruktur
     const buildTree = (nodes: TreeNode[], parentId: string | null = null): TreeNode[] => {
@@ -400,85 +403,113 @@ export default function Dashboard({ nodes }: DashboardProps) {
 
     return (
         <div className="flex h-full">
-            {/* Linke Seite: Tree */}
-            <div className="w-1/3 p-4 border-r">
-                <h1 className="text-2xl font-bold text-gray-900 mb-4">Struktur</h1>
-                {filteredNodes.length > 0 ? (
-                    <DashboardTree 
-                        nodes={filteredNodes} 
-                        onNodeSelect={setSelectedNode}
-                    />
-                ) : (
-                    <div className="text-gray-500 text-center">
-                        Keine Struktur verfügbar
+            {/* Struktur-Lasche */}
+            <div className={`fixed left-0 top-0 bottom-0 z-10 transition-transform duration-300 ${isStructureOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                <div className="h-full w-80 bg-white shadow-lg">
+                    <div className="p-4 border-b">
+                        <h1 className="text-2xl font-bold text-gray-900">Struktur</h1>
                     </div>
-                )}
-            </div>
-
-            {/* Rechte Seite: Diagramme */}
-            <div className="w-2/3 p-4">
-                <div className="flex justify-between items-center mb-4">
-                    <h1 className="text-2xl font-bold text-gray-900">Statistiken</h1>
-                    <div className="flex space-x-2">
-                        <select
-                            value={timeRange}
-                            onChange={(e) => setTimeRange(e.target.value as TimeRange)}
-                            className="px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                            <option value="7d">7 Tage</option>
-                            <option value="14d">14 Tage</option>
-                            <option value="30d">30 Tage</option>
-                            <option value="3m">3 Monate</option>
-                            <option value="6m">6 Monate</option>
-                            <option value="1y">1 Jahr</option>
-                        </select>
-                    </div>
-                </div>
-                {selectedNode ? (
-                    <div className="mt-6">
-                        <h2 className="text-lg font-semibold mb-4">
-                            Statistiken für {selectedNode.name} und untergeordnete Bereiche
-                        </h2>
-                        {isLoading ? (
-                            <div className="flex justify-center items-center h-96">
-                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-                            </div>
-                        ) : stats.length > 0 ? (
-                            <div className="space-y-8">
-                                <div>
-                                    <ReactECharts
-                                        option={getChartOptions().totalOption}
-                                        style={{ height: '400px' }}
-                                    />
-                                </div>
-                                <div>
-                                    <ReactECharts
-                                        option={getChartOptions().totalSessionsOption}
-                                        style={{ height: '400px' }}
-                                    />
-                                </div>
-                                <div>
-                                    <ReactECharts
-                                        option={getChartOptions().areaBytesOption}
-                                        style={{ height: '400px' }}
-                                    />
-                                </div>
-                                <div>
-                                    <ReactECharts
-                                        option={getChartOptions().areaSessionsOption}
-                                        style={{ height: '400px' }}
-                                    />
-                                </div>
-                            </div>
+                    <div className="p-4 overflow-y-auto h-[calc(100%-4rem)]">
+                        {filteredNodes.length > 0 ? (
+                            <DashboardTree 
+                                nodes={filteredNodes} 
+                                onNodeSelect={setSelectedNode}
+                            />
                         ) : (
-                            <p className="text-gray-500">Keine Statistiken verfügbar</p>
+                            <div className="text-gray-500 text-center">
+                                Keine Struktur verfügbar
+                            </div>
                         )}
                     </div>
-                ) : (
-                    <div className="text-center text-gray-500 mt-8">
-                        Bitte wählen Sie einen Knoten aus der Struktur aus
+                </div>
+            </div>
+
+            {/* Hauptinhalt */}
+            <div className={`flex-1 transition-all duration-300 ${isStructureOpen ? 'ml-80' : 'ml-0'}`}>
+                <div className="p-4">
+                    {/* Breadcrumbs */}
+                    <div className="mb-4">
+                        <Breadcrumbs node={selectedNode} nodes={nodes} />
                     </div>
-                )}
+
+                    {/* Struktur-Toggle-Button */}
+                    <button
+                        onClick={() => setIsStructureOpen(!isStructureOpen)}
+                        className="fixed left-0 top-1/2 -translate-y-1/2 z-20 bg-white p-2 rounded-r-lg shadow-lg hover:bg-gray-50"
+                    >
+                        {isStructureOpen ? (
+                            <ChevronLeftIcon className="h-6 w-6 text-gray-600" />
+                        ) : (
+                            <ChevronRightIcon className="h-6 w-6 text-gray-600" />
+                        )}
+                    </button>
+
+                    {/* Rest des Inhalts */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h1 className="text-2xl font-bold text-gray-900">Statistiken</h1>
+                            <div className="flex space-x-2">
+                                <select
+                                    value={timeRange}
+                                    onChange={(e) => setTimeRange(e.target.value as TimeRange)}
+                                    className="px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    <option value="7d">7 Tage</option>
+                                    <option value="14d">14 Tage</option>
+                                    <option value="30d">30 Tage</option>
+                                    <option value="3m">3 Monate</option>
+                                    <option value="6m">6 Monate</option>
+                                    <option value="1y">1 Jahr</option>
+                                </select>
+                            </div>
+                        </div>
+                        {selectedNode ? (
+                            <div className="mt-6">
+                                <h2 className="text-lg font-semibold mb-4">
+                                    Statistiken für {selectedNode.name} und untergeordnete Bereiche
+                                </h2>
+                                {isLoading ? (
+                                    <div className="flex justify-center items-center h-96">
+                                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                                    </div>
+                                ) : stats.length > 0 ? (
+                                    <div className="space-y-8">
+                                        <div>
+                                            <ReactECharts
+                                                option={getChartOptions().totalOption}
+                                                style={{ height: '400px' }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <ReactECharts
+                                                option={getChartOptions().totalSessionsOption}
+                                                style={{ height: '400px' }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <ReactECharts
+                                                option={getChartOptions().areaBytesOption}
+                                                style={{ height: '400px' }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <ReactECharts
+                                                option={getChartOptions().areaSessionsOption}
+                                                style={{ height: '400px' }}
+                                            />
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p className="text-gray-500">Keine Statistiken verfügbar</p>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="text-center text-gray-500 mt-8">
+                                Bitte wählen Sie einen Knoten aus der Struktur aus
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );
