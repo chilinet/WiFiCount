@@ -101,7 +101,7 @@ export default function EditUserPage({ user: initialUser, nodes, role }: EditUse
                         type="email"
                         id="email"
                         name="email"
-                        value={user.email}
+                        value={user.email || ''}
                         onChange={handleChange}
                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                     />
@@ -129,7 +129,7 @@ export default function EditUserPage({ user: initialUser, nodes, role }: EditUse
                     <select
                         id="role"
                         name="role"
-                        value={user.role}
+                        value={user.role || 'USER'}
                         onChange={handleChange}
                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                     >

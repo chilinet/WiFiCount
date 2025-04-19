@@ -5,10 +5,11 @@ import { DefaultSession } from 'next-auth';
 declare module 'next-auth' {
     interface User {
         id: string;
-        name: string | null;
         email: string;
+        name: string | null;
         role: string;
         nodeId: string | null;
+        image: string | null;
         node: {
             id: string;
             name: string;
@@ -23,6 +24,7 @@ declare module 'next-auth' {
             name: string | null;
             role: string;
             nodeId: string | null;
+            image: string | null;
             node: {
                 id: string;
                 name: string;
@@ -36,10 +38,11 @@ declare module 'next-auth' {
 declare module 'next-auth/jwt' {
     interface JWT {
         id: string;
-        name: string | null;
         email: string;
+        name: string | null;
         role: string;
         nodeId: string | null;
+        image: string | null;
         node: {
             id: string;
             name: string;

@@ -1,17 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import Image from 'next/image';
 
 export default function Profile() {
-    const { data: session, update } = useSession();
+    const { data: session, status, update } = useSession();
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [profileData, setProfileData] = useState({
-        name: session?.user?.name || '',
-        email: session?.user?.email || '',
+        name: '',
+        email: '',
     });
     const [passwordData, setPasswordData] = useState({
         currentPassword: '',
@@ -19,9 +19,22 @@ export default function Profile() {
         confirmPassword: '',
     });
 
-    // Redirect to login if not authenticated
-    if (!session) {
-        router.push('/login');
+    useEffect(() => {
+        if (status === 'unauthenticated') {
+            router.push('/login');
+        } else if (status === 'authenticated' && session?.user) {
+            setProfileData({
+                name: session.user.name || '',
+                email: session.user.email || '',
+            });
+        }
+    }, [status, session, router]);
+
+    if (status === 'loading') {
+        return <div>Loading...</div>;
+    }
+
+    if (status === 'unauthenticated') {
         return null;
     }
 

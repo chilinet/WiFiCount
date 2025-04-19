@@ -25,6 +25,7 @@ interface ExtendedSession extends Session {
         email: string;
         role: string;
         nodeId: string | null;
+        image: string | null;
         node: {
             id: string;
             name: string;

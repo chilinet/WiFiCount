@@ -11,12 +11,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
         const { email } = req.body;
 
+        if (!email || typeof email !== 'string') {
+            return res.status(400).json({ error: 'Valid email is required' });
+        }
+
         // Find user
         const user = await prisma.user.findUnique({
             where: { email },
+            select: {
+                id: true,
+                email: true,
+            }
         });
 
-        if (!user) {
+        if (!user || !user.email) {
             // Return success even if user not found for security
             return res.status(200).json({ message: 'If an account exists, you will receive an email with instructions' });
         }
@@ -51,7 +59,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Send email
         await transporter.sendMail({
             from: process.env.SMTP_FROM,
-            to: user.email,
+            to: user.email, // Now TypeScript knows this is a non-null string
             subject: 'CHILINET - Passwort zurücksetzen',
             html: `
                 <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">

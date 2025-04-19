@@ -1,7 +1,7 @@
 import NextAuth from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { prisma } from '@/lib/prisma';
-import { compare, hash } from 'bcryptjs';
+import bcrypt from 'bcryptjs';
 
 // Funktion zum Erstellen eines Testbenutzers
 async function createTestUser() {
@@ -10,7 +10,7 @@ async function createTestUser() {
     });
 
     if (!testUser) {
-        const hashedPassword = await hash('test123', 12);
+        const hashedPassword = await bcrypt.hash('test123', 12);
         await prisma.user.create({
             data: {
                 name: 'Test User',
@@ -38,40 +38,42 @@ export default NextAuth({
                 if (!credentials?.email || !credentials?.password) {
                     throw new Error('Email und Passwort sind erforderlich');
                 }
-                console.log('credentials', credentials);
+
                 const user = await prisma.user.findUnique({
                     where: { email: credentials.email },
                     include: {
-                        node: true
-                    }
+                        node: {
+                            select: {
+                                id: true,
+                                name: true,
+                                category: true,
+                            },
+                        },
+                    },
                 });
 
-                if (!user) {
-                    throw new Error('Benutzer nicht gefunden');
+                if (!user || !user.password) {
+                    throw new Error('Ungültige Anmeldedaten');
                 }
 
-                if (!user.password) {
-                    throw new Error('Benutzer hat kein Passwort');
-                }
-
-                const isValid = await compare(credentials.password, user.password);
+                const isValid = await bcrypt.compare(credentials.password, user.password);
 
                 if (!isValid) {
-                    throw new Error('Ungültiges Passwort');
+                    throw new Error('Ungültige Anmeldedaten');
                 }
 
-                // Ensure all required fields are present and not undefined
                 return {
                     id: user.id,
-                    email: user.email,
-                    name: user.name || null,
-                    role: user.role || 'user',
-                    nodeId: user.nodeId || null,
+                    email: user.email || '',  // Ensure email is never null
+                    name: user.name,
+                    role: user.role || 'USER',
+                    nodeId: user.nodeId,
+                    image: user.image,
                     node: user.node ? {
                         id: user.node.id,
                         name: user.node.name,
-                        category: user.node.category
-                    } : null
+                        category: user.node.category,
+                    } : null,
                 };
             }
         })
@@ -83,32 +85,29 @@ export default NextAuth({
     callbacks: {
         async jwt({ token, user }) {
             if (user) {
-                return {
-                    ...token,
-                    id: user.id,
-                    role: user.role,
-                    nodeId: user.nodeId,
-                    node: user.node,
-                    name: user.name,
-                    email: user.email
-                };
+                token.id = user.id;
+                token.email = user.email;
+                token.name = user.name;
+                token.role = user.role;
+                token.nodeId = user.nodeId;
+                token.image = user.image;
+                token.node = user.node;
             }
             return token;
         },
         async session({ session, token }) {
-            return {
-                ...session,
-                user: {
-                    ...session.user,
-                    id: token.id as string,
-                    name: token.name as string | null,
-                    email: token.email as string,
-                    role: token.role as string,
-                    nodeId: token.nodeId as string | null,
-                    node: token.node as any,
-                    image: null
-                }
-            };
+            if (token) {
+                session.user = {
+                    id: token.id,
+                    email: token.email,
+                    name: token.name,
+                    role: token.role,
+                    nodeId: token.nodeId,
+                    image: token.image,
+                    node: token.node,
+                };
+            }
+            return session;
         }
     },
     session: {
