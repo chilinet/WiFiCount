@@ -4,6 +4,7 @@ import { useState } from 'react';
 import type { ReactElement } from 'react';
 import type { NextPageWithLayout } from '../types/next';
 import Image from 'next/image';
+import Link from 'next/link';
 
 const Login: NextPageWithLayout = () => {
     const router = useRouter();
@@ -108,6 +109,15 @@ const Login: NextPageWithLayout = () => {
                         >
                             {isLoading ? 'Anmeldung läuft...' : 'Anmelden'}
                         </button>
+                    </div>
+
+                    <div className="text-sm text-center">
+                        <Link
+                            href="/forgot-password"
+                            className="font-medium text-indigo-600 hover:text-indigo-500"
+                        >
+                            Passwort vergessen?
+                        </Link>
                     </div>
                 </form>
             </div>

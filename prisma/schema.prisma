@@ -11,17 +11,19 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?
-  role          String    @default("USER")
-  nodeId        String?
-  node          TreeNode? @relation(fields: [nodeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  name            String?
+  email           String?   @unique
+  emailVerified   DateTime?
+  image           String?
+  password        String?
+  role            String?
+  resetToken      String?   @unique
+  resetTokenExpiry DateTime?
+  nodeId          String?
+  node            TreeNode? @relation(fields: [nodeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
 
 model Device {
