@@ -152,76 +152,74 @@ export default function StructurePage({ initialNodes = [] }: StructurePageProps)
     }
 
     return (
-        <Layout>
-            <div className="bg-white shadow rounded-lg p-6">
-                <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-2xl font-bold text-gray-900">Strukturverwaltung</h1>
+        <div className="bg-white shadow rounded-lg p-6">
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-2xl font-bold text-gray-900">Strukturverwaltung</h1>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                    <Tree
+                        initialNodes={nodes}
+                        onNodeSelect={handleNodeSelect}
+                        onNodeUpdate={handleNodeUpdate}
+                        onNodeDelete={handleNodeDelete}
+                        onNodeCreate={handleNodeCreate}
+                    />
                 </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div>
-                        <Tree
-                            initialNodes={nodes}
-                            onNodeSelect={handleNodeSelect}
-                            onNodeUpdate={handleNodeUpdate}
-                            onNodeDelete={handleNodeDelete}
-                            onNodeCreate={handleNodeCreate}
-                        />
-                    </div>
-                    <div>
-                        {selectedNode ? (
-                            <div className="border rounded-lg p-4">
-                                <h2 className="text-lg font-medium mb-4">Node Details</h2>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700">
-                                            Name
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={selectedNode.name}
-                                            onChange={(e) => handleNodeUpdate(selectedNode.id, {
-                                                name: e.target.value,
-                                                category: selectedNode.category as NodeCategory
-                                            })}
-                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700">
-                                            Kategorie
-                                        </label>
-                                        <select
-                                            value={selectedNode.category}
-                                            onChange={(e) => handleNodeUpdate(selectedNode.id, {
-                                                name: selectedNode.name,
-                                                category: e.target.value as NodeCategory
-                                            })}
-                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                                        >
-                                            {selectedNode.parentId === null ? (
-                                                <option value="ROOT">Root</option>
-                                            ) : (
-                                                <>
-                                                    <option value="KUNDE">Kunde</option>
-                                                    <option value="STANDORT">Standort</option>
-                                                    <option value="BEREICH">Bereich</option>
-                                                </>
-                                            )}
-                                        </select>
-                                    </div>
-
+                <div>
+                    {selectedNode ? (
+                        <div className="border rounded-lg p-4">
+                            <h2 className="text-lg font-medium mb-4">Node Details</h2>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Name
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={selectedNode.name}
+                                        onChange={(e) => handleNodeUpdate(selectedNode.id, {
+                                            name: e.target.value,
+                                            category: selectedNode.category as NodeCategory
+                                        })}
+                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                    />
                                 </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Kategorie
+                                    </label>
+                                    <select
+                                        value={selectedNode.category}
+                                        onChange={(e) => handleNodeUpdate(selectedNode.id, {
+                                            name: selectedNode.name,
+                                            category: e.target.value as NodeCategory
+                                        })}
+                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                    >
+                                        {selectedNode.parentId === null ? (
+                                            <option value="ROOT">Root</option>
+                                        ) : (
+                                            <>
+                                                <option value="KUNDE">Kunde</option>
+                                                <option value="STANDORT">Standort</option>
+                                                <option value="BEREICH">Bereich</option>
+                                            </>
+                                        )}
+                                    </select>
+                                </div>
+
                             </div>
-                        ) : (
-                            <div className="border rounded-lg p-4">
-                                <p className="text-gray-500">Wählen Sie einen Node aus, um Details anzuzeigen.</p>
-                            </div>
-                        )}
-                    </div>
+                        </div>
+                    ) : (
+                        <div className="border rounded-lg p-4">
+                            <p className="text-gray-500">Wählen Sie einen Node aus, um Details anzuzeigen.</p>
+                        </div>
+                    )}
                 </div>
             </div>
-        </Layout>
+        </div>
     );
 }
 

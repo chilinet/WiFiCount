@@ -1,45 +1,56 @@
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/router';
+import { UserRole } from '@/types/auth';
 import { Cog6ToothIcon, UserGroupIcon, DevicePhoneMobileIcon } from '@heroicons/react/24/outline';
 
 export default function Settings() {
-    const tiles = [
+    const router = useRouter();
+    const { data: session } = useSession();
+    const isSuperAdmin = session?.user?.role === UserRole.SUPERADMIN;
+
+    const settings = [
         {
             title: 'Benutzerverwaltung',
             description: 'Verwalten Sie Benutzer und deren Berechtigungen',
             icon: UserGroupIcon,
-            href: '/settings/users'
+            href: '/settings/users',
         },
-        {
-            title: 'Struktur',
-            description: 'Verwalten Sie die Baumstruktur und Kategorien',
-            icon: Cog6ToothIcon,
-            href: '/settings/structure'
-        },
-        {
-            title: 'Devices',
-            description: 'Verwalten Sie angeschlossene Geräte',
-            icon: DevicePhoneMobileIcon,
-            href: '/settings/devices'
-        }
+        ...(isSuperAdmin ? [
+            {
+                title: 'Struktur',
+                description: 'Verwalten Sie die Baumstruktur und Kategorien',
+                icon: Cog6ToothIcon,
+                href: '/settings/structure',
+            },
+            {
+                title: 'Devices',
+                description: 'Verwalten Sie angeschlossene Geräte',
+                icon: DevicePhoneMobileIcon,
+                href: '/settings/devices',
+            },
+        ] : []),
     ];
 
     return (
-        <div className="bg-white shadow rounded-lg p-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-6">Einstellungen</h1>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {tiles.map((tile) => (
-                    <a
-                        key={tile.title}
-                        href={tile.href}
-                        className="block p-6 bg-white border border-gray-200 rounded-lg shadow hover:bg-gray-50 transition-colors"
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-8">Einstellungen</h1>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {settings.map((setting) => (
+                    <div
+                        key={setting.title}
+                        className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow duration-200 cursor-pointer"
+                        onClick={() => router.push(setting.href)}
                     >
-                        <div className="flex items-center space-x-4">
-                            <tile.icon className="h-8 w-8 text-blue-600" />
-                            <div>
-                                <h2 className="text-lg font-semibold text-gray-900">{tile.title}</h2>
-                                <p className="text-sm text-gray-500">{tile.description}</p>
+                        <div className="p-6">
+                            <div className="flex items-center">
+                                <setting.icon className="h-8 w-8 text-blue-600" />
+                                <div className="ml-4">
+                                    <h3 className="text-lg font-medium text-gray-900">{setting.title}</h3>
+                                    <p className="mt-1 text-sm text-gray-500">{setting.description}</p>
+                                </div>
                             </div>
                         </div>
-                    </a>
+                    </div>
                 ))}
             </div>
         </div>
