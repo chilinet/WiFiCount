@@ -198,14 +198,25 @@ export default function Dashboard({ nodes }: DashboardProps) {
     }, [selectedNode, timeRange]);
 
     const getChartOptions = () => {
-        // Erstelle die X-Achse (Daten)
-        const dates = [...new Set(stats.map(stat => stat.datum))].sort();
+        // Erstelle eine kontinuierliche Zeitachse für den gesamten Zeitraum
+        const { from: fromDate, to: toDate } = getDateRange(timeRange);
+        const startDate = new Date(fromDate);
+        const endDate = new Date(toDate);
+        
+        // Erstelle ein Array mit allen Tagen im Zeitraum
+        const allDates: string[] = [];
+        const currentDate = new Date(startDate);
+        
+        while (currentDate <= endDate) {
+            allDates.push(currentDate.toISOString().split('T')[0]);
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
 
-        // Erstelle die aufsummierten Serien
+        // Erstelle die aufsummierten Serien mit allen Tagen
         const totalSeries = [{
             name: 'Gesamt',
             type: 'bar',
-            data: dates.map(date => {
+            data: allDates.map(date => {
                 return stats
                     .filter(stat => stat.datum === date)
                     .reduce((sum, stat) => sum + Math.round(parseInt(stat.total_bytes) / (1024 * 1024)), 0);
@@ -215,7 +226,7 @@ export default function Dashboard({ nodes }: DashboardProps) {
         const totalSessionsSeries = [{
             name: 'Gesamt',
             type: 'bar',
-            data: dates.map(date => {
+            data: allDates.map(date => {
                 return stats
                     .filter(stat => stat.datum === date)
                     .reduce((sum, stat) => sum + stat.anzahl_sessions, 0);
@@ -243,11 +254,11 @@ export default function Dashboard({ nodes }: DashboardProps) {
             return acc;
         }, {} as Record<string, AccessPointStats[]>);
 
-        // Erstelle die Serien für jeden Bereich
+        // Erstelle die Serien für jeden Bereich mit allen Tagen
         const areaBytesSeries = Object.entries(areaData).map(([areaName, data]) => ({
             name: areaName,
             type: 'bar',
-            data: dates.map(date => {
+            data: allDates.map(date => {
                 return data
                     .filter(stat => stat.datum === date)
                     .reduce((sum, stat) => sum + Math.round(parseInt(stat.total_bytes) / (1024 * 1024)), 0);
@@ -257,7 +268,7 @@ export default function Dashboard({ nodes }: DashboardProps) {
         const areaSessionsSeries = Object.entries(areaData).map(([areaName, data]) => ({
             name: areaName,
             type: 'bar',
-            data: dates.map(date => {
+            data: allDates.map(date => {
                 return data
                     .filter(stat => stat.datum === date)
                     .reduce((sum, stat) => sum + stat.anzahl_sessions, 0);
@@ -285,7 +296,7 @@ export default function Dashboard({ nodes }: DashboardProps) {
             xAxis: {
                 type: 'category',
                 boundaryGap: false,
-                data: dates
+                data: allDates
             },
             yAxis: {
                 type: 'value',
@@ -315,7 +326,7 @@ export default function Dashboard({ nodes }: DashboardProps) {
             xAxis: {
                 type: 'category',
                 boundaryGap: false,
-                data: dates
+                data: allDates
             },
             yAxis: {
                 type: 'value',
@@ -352,7 +363,7 @@ export default function Dashboard({ nodes }: DashboardProps) {
             xAxis: {
                 type: 'category',
                 boundaryGap: false,
-                data: dates
+                data: allDates
             },
             yAxis: {
                 type: 'value',
@@ -389,7 +400,7 @@ export default function Dashboard({ nodes }: DashboardProps) {
             xAxis: {
                 type: 'category',
                 boundaryGap: false,
-                data: dates
+                data: allDates
             },
             yAxis: {
                 type: 'value',
@@ -445,7 +456,7 @@ export default function Dashboard({ nodes }: DashboardProps) {
                     </button>
 
                     {/* Rest des Inhalts */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="w-full">
                         <div className="flex justify-between items-center mb-4">
                             <h1 className="text-2xl font-bold text-gray-900">Statistiken</h1>
                             <div className="flex space-x-2">
@@ -474,28 +485,28 @@ export default function Dashboard({ nodes }: DashboardProps) {
                                     </div>
                                 ) : stats.length > 0 ? (
                                     <div className="space-y-8">
-                                        <div>
+                                        <div className="w-full">
                                             <ReactECharts
                                                 option={getChartOptions().totalOption}
-                                                style={{ height: '400px' }}
+                                                style={{ height: '400px', width: '100%' }}
                                             />
                                         </div>
-                                        <div>
+                                        <div className="w-full">
                                             <ReactECharts
                                                 option={getChartOptions().totalSessionsOption}
-                                                style={{ height: '400px' }}
+                                                style={{ height: '400px', width: '100%' }}
                                             />
                                         </div>
-                                        <div>
+                                        <div className="w-full">
                                             <ReactECharts
                                                 option={getChartOptions().areaBytesOption}
-                                                style={{ height: '400px' }}
+                                                style={{ height: '400px', width: '100%' }}
                                             />
                                         </div>
-                                        <div>
+                                        <div className="w-full">
                                             <ReactECharts
                                                 option={getChartOptions().areaSessionsOption}
-                                                style={{ height: '400px' }}
+                                                style={{ height: '400px', width: '100%' }}
                                             />
                                         </div>
                                     </div>
