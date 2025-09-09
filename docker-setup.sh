@@ -15,6 +15,24 @@ if ! command -v docker-compose &> /dev/null; then
     exit 1
 fi
 
+# Check docker-compose version
+COMPOSE_VERSION=$(docker-compose --version | grep -oE '[0-9]+\.[0-9]+' | head -1)
+echo "📋 Docker Compose version: $COMPOSE_VERSION"
+
+# Try modern format first, fallback to legacy
+echo "🔄 Testing Docker Compose format compatibility..."
+
+# Test if modern format works
+if docker-compose -f docker-compose.yml config > /dev/null 2>&1; then
+    echo "✅ Modern format works, using docker-compose.yml"
+    COMPOSE_FILE="docker-compose.yml"
+else
+    echo "⚠️  Modern format failed, using legacy format"
+    COMPOSE_FILE="docker-compose-legacy.yml"
+fi
+
+echo "📁 Using compose file: $COMPOSE_FILE"
+
 # Check if .env file exists
 if [ ! -f ".env" ] && [ ! -f ".env.local" ]; then
     echo "⚠️ No .env file found. Please create one with your database connection details."
@@ -28,17 +46,17 @@ if [ ! -f ".env" ] && [ ! -f ".env.local" ]; then
 fi
 
 echo "📦 Building Docker image..."
-docker-compose build
+docker-compose -f $COMPOSE_FILE build
 
 echo "🌐 Starting the application..."
-docker-compose up -d app
+docker-compose -f $COMPOSE_FILE up -d app
 
 echo "✅ Setup complete!"
 echo ""
 echo "🌍 Application is available at: http://localhost:3000"
 echo ""
 echo "📋 Useful commands:"
-echo "  View logs: docker-compose logs -f app"
-echo "  Stop: docker-compose down"
-echo "  Restart: docker-compose restart"
-echo "  Rebuild: docker-compose up --build -d"
+echo "  View logs: docker-compose -f $COMPOSE_FILE logs -f app"
+echo "  Stop: docker-compose -f $COMPOSE_FILE down"
+echo "  Restart: docker-compose -f $COMPOSE_FILE restart"
+echo "  Rebuild: docker-compose -f $COMPOSE_FILE up --build -d"
