@@ -1,10 +1,9 @@
-# Legacy Docker Compose file for older versions (1.x)
-# Use this if you have Docker Compose 1.x
+# Simple Docker Compose file for Docker Compose 1.x
+# This format is guaranteed to work with older versions
 
 app:
   build: .
   container_name: wificount-app
-  restart: unless-stopped
   ports:
     - "3000:3000"
   environment:
