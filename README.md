@@ -1,24 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# WiFiCount
+
+A Next.js application for managing WiFi networks and captive portals with a hierarchical tree structure.
+
+## Database Migration: MSSQL → MySQL
+
+This application has been migrated from MSSQL to MySQL. See [MYSQL_SETUP.md](./MYSQL_SETUP.md) for detailed setup instructions.
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Node.js 20.0.0 or higher
+- MySQL server
+- npm or yarn
+
+### Installation
+
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Set up your environment variables (see [MYSQL_SETUP.md](./MYSQL_SETUP.md))
+
+4. Generate Prisma client:
+   ```bash
+   npx prisma generate
+   ```
+
+5. Set up the database:
+   ```bash
+   npx prisma db push
+   ```
+
+6. Run the development server:
+   ```bash
+   npm run dev
+   ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Testing MySQL Connection
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+To test your MySQL connection, run:
+```bash
+node test-mysql-connection.js
+```
 
 ## Learn More
 

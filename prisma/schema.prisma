@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlserver"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -38,6 +38,23 @@ model Device {
   @@index([areaId])
 }
 
+model CaptivePortalConfig {
+  id              String   @id @default(cuid())
+  nodeId          String
+  node            TreeNode @relation(fields: [nodeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  portalName      String
+  welcomeMessage  String   @default("")
+  termsOfService  String   @default("")
+  redirectUrl     String
+  sessionTimeout  Int      @default(3600)
+  maxBandwidth    Int      @default(1024)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([nodeId])
+}
+
 model TreeNode {
   id        String    @id @default(cuid())
   name      String
@@ -47,6 +64,7 @@ model TreeNode {
   category  String
   users     User[]
   devices   Device[]
+  captivePortalConfigs CaptivePortalConfig[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 

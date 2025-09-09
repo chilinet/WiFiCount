@@ -54,38 +54,53 @@ export default function Dashboard({ nodes }: DashboardProps) {
     };
 
     useEffect(() => {
-        const builtTree = buildTree(nodes);
-        setTree(builtTree);
-        
-        if (session?.user) {
-            if (session.user.role === 'SUPERADMIN') {
-                // SUPERADMIN sieht die komplette Struktur
-                setFilteredNodes(builtTree);
-            } else if (session.user.nodeId) {
-                // ADMIN und USER sehen nur ab ihrem zugewiesenen Node
-                const findNodeAndChildren = (nodes: TreeNode[], nodeId: string): TreeNode[] => {
-                    const result: TreeNode[] = [];
-                    const findNode = (nodes: TreeNode[], targetId: string): TreeNode | null => {
-                        for (const node of nodes) {
-                            if (node.id === targetId) return node;
-                            if (node.children) {
-                                const found = findNode(node.children, targetId);
-                                if (found) return found;
-                            }
+        const loadTreeData = async () => {
+            try {
+                const response = await fetch('/api/tree');
+                if (response.ok) {
+                    const treeData = await response.json();
+                    setTree([treeData]); // Tree API returns single root node
+                    
+                    if (session?.user) {
+                        if (session.user.role === 'SUPERADMIN') {
+                            // SUPERADMIN sieht die komplette Struktur
+                            setFilteredNodes([treeData]);
+                        } else if (session.user.nodeId) {
+                            // ADMIN und USER sehen nur ab ihrem zugewiesenen Node
+                            const findNodeAndChildren = (nodes: TreeNode[], nodeId: string): TreeNode[] => {
+                                const result: TreeNode[] = [];
+                                const findNode = (nodes: TreeNode[], targetId: string): TreeNode | null => {
+                                    for (const node of nodes) {
+                                        if (node.id === targetId) return node;
+                                        if (node.children) {
+                                            const found = findNode(node.children, targetId);
+                                            if (found) return found;
+                                        }
+                                    }
+                                    return null;
+                                };
+
+                                const startNode = findNode(nodes, nodeId);
+                                if (startNode) {
+                                    result.push(startNode);
+                                }
+                                return result;
+                            };
+
+                            setFilteredNodes(findNodeAndChildren([treeData], session.user.nodeId));
                         }
-                        return null;
-                    };
-
-                    const startNode = findNode(nodes, nodeId);
-                    if (startNode) {
-                        result.push(startNode);
                     }
-                    return result;
-                };
-
-                setFilteredNodes(findNodeAndChildren(builtTree, session.user.nodeId));
+                }
+            } catch (error) {
+                console.error('Error loading tree data:', error);
+                // Fallback to buildTree if API fails
+                const builtTree = buildTree(nodes);
+                setTree(builtTree);
+                setFilteredNodes(builtTree);
             }
-        }
+        };
+
+        loadTreeData();
     }, [session, nodes]);
 
     const getSubordinateAreaIds = (node: TreeNode): string[] => {
