@@ -1,5 +1,5 @@
-# Simple Docker Compose file for Docker Compose 1.x
-# This format is guaranteed to work with older versions
+# Docker Compose file for Docker Compose 1.x
+# This format is guaranteed to work with Docker Compose 1.18
 
 db:
   image: mysql:8.0
@@ -32,5 +32,3 @@ app:
     - ./uploads:/app/uploads
   links:
     - db
-
-# Volumes are handled automatically in Docker Compose 1.x

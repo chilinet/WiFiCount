@@ -27,8 +27,8 @@ if docker-compose -f docker-compose.yml config > /dev/null 2>&1; then
     echo "✅ Modern format works, using docker-compose.yml"
     COMPOSE_FILE="docker-compose.yml"
 else
-    echo "⚠️  Modern format failed, using simple legacy format"
-    COMPOSE_FILE="docker-compose-simple.yml"
+    echo "⚠️  Modern format failed, using Docker Compose 1.x format"
+    COMPOSE_FILE="docker-compose-v1.yml"
 fi
 
 echo "📁 Using compose file: $COMPOSE_FILE"

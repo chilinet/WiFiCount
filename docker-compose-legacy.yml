@@ -13,7 +13,7 @@ db:
   ports:
     - "3307:3306"
   volumes:
-    - mysql_data:/var/lib/mysql
+    - /var/lib/mysql
     - ./backup_wepper.sql:/docker-entrypoint-initdb.d/init.sql
   command: --default-authentication-plugin=mysql_native_password
 
@@ -35,4 +35,4 @@ app:
   links:
     - db
 
-mysql_data:
+# Volumes are handled automatically in Docker Compose 1.x
