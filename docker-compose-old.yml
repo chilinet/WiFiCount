@@ -1,0 +1,33 @@
+# Docker Compose file for very old Docker versions (API 1.21)
+# This format works with Docker Compose 1.18 and Docker API 1.21
+
+db:
+  image: mysql:5.7
+  container_name: wificount-mysql
+  environment:
+    MYSQL_ROOT_PASSWORD: root
+    MYSQL_DATABASE: wificnt
+    MYSQL_USER: wificount
+    MYSQL_PASSWORD: wificount123
+  ports:
+    - "3307:3306"
+  volumes:
+    - /var/lib/mysql
+    - ./backup_wepper.sql:/docker-entrypoint-initdb.d/init.sql
+
+app:
+  build: .
+  container_name: wificount-app
+  ports:
+    - "3000:3000"
+  environment:
+    - NODE_ENV=production
+    - DATABASE_URL=mysql://wificount:wificount123@db:3306/wificnt
+    - NEXTAUTH_URL=http://localhost:3000
+    - NEXTAUTH_SECRET=your-secret-key-here-change-this-in-production
+    - NEXT_PUBLIC_API_URL=https://cnradiusapi.chilinet.cloud
+    - NEXT_PUBLIC_API_KEY=zk4SNSo3dDJfKYdt7LdhG44BBEiGBjPE
+  volumes:
+    - ./uploads:/app/uploads
+  links:
+    - db
