@@ -33,14 +33,22 @@ echo "📦 Building Docker image..."
 docker-compose -f docker-compose-simple.yml build
 
 echo "🌐 Starting the application..."
-docker-compose -f docker-compose-simple.yml up -d app
+docker-compose -f docker-compose-simple.yml up -d
 
 echo "✅ Setup complete!"
 echo ""
 echo "🌍 Application is available at: http://localhost:3000"
 echo ""
 echo "📋 Useful commands:"
-echo "  View logs: docker-compose -f docker-compose-simple.yml logs -f app"
+echo "  View logs: docker-compose -f docker-compose-simple.yml logs -f"
+echo "  View app logs: docker-compose -f docker-compose-simple.yml logs -f app"
+echo "  View db logs: docker-compose -f docker-compose-simple.yml logs -f db"
 echo "  Stop: docker-compose -f docker-compose-simple.yml down"
 echo "  Restart: docker-compose -f docker-compose-simple.yml restart"
 echo "  Rebuild: docker-compose -f docker-compose-simple.yml up --build -d"
+echo ""
+echo "🗄️  Database:"
+echo "  Host: localhost:3307"
+echo "  Database: wificnt"
+echo "  User: wificount"
+echo "  Password: wificount123"

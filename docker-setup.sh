@@ -49,14 +49,22 @@ echo "📦 Building Docker image..."
 docker-compose -f $COMPOSE_FILE build
 
 echo "🌐 Starting the application..."
-docker-compose -f $COMPOSE_FILE up -d app
+docker-compose -f $COMPOSE_FILE up -d
 
 echo "✅ Setup complete!"
 echo ""
 echo "🌍 Application is available at: http://localhost:3000"
 echo ""
 echo "📋 Useful commands:"
-echo "  View logs: docker-compose -f $COMPOSE_FILE logs -f app"
+echo "  View logs: docker-compose -f $COMPOSE_FILE logs -f"
+echo "  View app logs: docker-compose -f $COMPOSE_FILE logs -f app"
+echo "  View db logs: docker-compose -f $COMPOSE_FILE logs -f db"
 echo "  Stop: docker-compose -f $COMPOSE_FILE down"
 echo "  Restart: docker-compose -f $COMPOSE_FILE restart"
 echo "  Rebuild: docker-compose -f $COMPOSE_FILE up --build -d"
+echo ""
+echo "🗄️  Database:"
+echo "  Host: localhost:3307"
+echo "  Database: wificnt"
+echo "  User: wificount"
+echo "  Password: wificount123"

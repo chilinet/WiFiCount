@@ -1,146 +1,229 @@
 # WiFiCount Docker Setup
 
-Diese Anleitung zeigt, wie Sie WiFiCount mit Docker auf einem Server mit vorhandener MySQL-Datenbank bereitstellen.
+This document explains how to run WiFiCount using Docker with MySQL.
 
-## Voraussetzungen
+## Prerequisites
 
-- Docker und Docker Compose installiert
-- MySQL-Server bereits auf dem Server verfügbar
-- Zugriff auf die MySQL-Datenbank
+- Docker installed
+- Docker Compose installed
+- `.env` file with database connection details (optional - defaults provided)
 
-## Schnellstart
+## Quick Start
 
-1. **Umgebungsvariablen konfigurieren**
-   
-   Erstellen Sie eine `.env` Datei mit Ihren Datenbankverbindungsdetails:
+1. **Clone the repository:**
    ```bash
-   DATABASE_URL=mysql://username:password@host:port/database
-   NEXTAUTH_URL=http://localhost:3000
-   NEXTAUTH_SECRET=your-secret-key-here
-   NEXT_PUBLIC_API_URL=https://cnradiusapi.chilinet.cloud
-   NEXT_PUBLIC_API_KEY=your-api-key
+   git clone <repository-url>
+   cd WiFiCount
    ```
 
-2. **Docker-Container starten**
+2. **Run with MySQL (Recommended):**
    ```bash
-   # Automatisches Setup
+   ./setup-mysql.sh
+   ```
+
+3. **Or run with external MySQL:**
+   ```bash
    ./docker-setup.sh
-   
-   # Oder manuell
-   docker-compose up --build -d
    ```
 
-3. **Anwendung aufrufen**
-   - Öffnen Sie http://localhost:3000 in Ihrem Browser
+4. **Access the application:**
+   - Application: http://localhost:3000
+   - MySQL Database: localhost:3307
 
-## Manuelle Befehle
+## Docker Compose Files
+
+The project includes multiple Docker Compose files for different scenarios:
+
+- `docker-compose.yml` - Modern format with MySQL (Docker Compose 2.x+)
+- `docker-compose-legacy.yml` - Legacy format with MySQL (Docker Compose 1.x)
+- `docker-compose-simple.yml` - Simple format with MySQL (Docker Compose 1.x)
+
+## Setup Scripts
+
+### 1. MySQL Setup (Recommended)
+```bash
+./setup-mysql.sh
+```
+- Includes MySQL database
+- Automatically detects Docker Compose version
+- Imports `backup_wepper.sql` if available
+- No external database required
+
+### 2. External Database Setup
+```bash
+./docker-setup.sh
+```
+- Uses external MySQL database
+- Requires `.env` file with database connection
+- Automatically detects Docker Compose version
+
+### 3. Simple Setup
+```bash
+./setup-simple.sh
+```
+- Uses simple Docker Compose format
+- Maximum compatibility with older versions
+
+## Manual Commands
+
+If you prefer to run commands manually:
 
 ```bash
-# Container bauen
-docker-compose build
-
-# Container starten
+# Build and start with MySQL
 docker-compose up -d
 
-# Logs anzeigen
+# View logs
+docker-compose logs -f
+
+# View specific service logs
 docker-compose logs -f app
+docker-compose logs -f db
 
-# Container stoppen
+# Stop the application
 docker-compose down
-
-# Container neu starten
-docker-compose restart
-
-# Container mit neuen Änderungen neu bauen
-docker-compose up --build -d
 ```
 
-## Datenbankverbindung
+## Database Configuration
 
-Die Anwendung verbindet sich mit Ihrer vorhandenen MySQL-Datenbank über die `DATABASE_URL` Umgebungsvariable.
+### MySQL Container Settings
 
-Beispiel für verschiedene MySQL-Konfigurationen:
+- **Image:** mysql:8.0
+- **Port:** 3307 (external), 3306 (internal)
+- **Database:** wificnt
+- **User:** wificount
+- **Password:** wificount123
+- **Root Password:** root
 
-```bash
-# Lokale MySQL-Instanz
-DATABASE_URL=mysql://root:password@localhost:3306/wificnt
+### Data Persistence
 
-# Remote MySQL-Server
-DATABASE_URL=mysql://user:password@mysql.example.com:3306/wificnt
+- MySQL data is stored in a Docker volume: `mysql_data`
+- Data persists between container restarts
+- To reset database: `docker-compose down -v`
 
-# MySQL mit SSL
-DATABASE_URL=mysql://user:password@mysql.example.com:3306/wificnt?sslmode=require
-```
+### Import Existing Data
 
-## Produktions-Deployment
-
-Für Produktionsumgebungen:
-
-1. **Sichere Umgebungsvariablen setzen**
+1. **Place your SQL dump in the project root as `backup_wepper.sql`**
+2. **Restart the containers:**
    ```bash
-   NEXTAUTH_SECRET=your-very-secure-secret-key
-   NEXTAUTH_URL=https://yourdomain.com
+   docker-compose down
+   docker-compose up -d
    ```
 
-2. **Reverse Proxy konfigurieren** (nginx/Apache)
-   ```nginx
-   server {
-       listen 80;
-       server_name yourdomain.com;
-       
-       location / {
-           proxy_pass http://localhost:3000;
-           proxy_http_version 1.1;
-           proxy_set_header Upgrade $http_upgrade;
-           proxy_set_header Connection 'upgrade';
-           proxy_set_header Host $host;
-           proxy_cache_bypass $http_upgrade;
-       }
-   }
-   ```
+## Environment Variables
 
-3. **SSL-Zertifikat hinzufügen** (Let's Encrypt empfohlen)
+### With MySQL Container (Default)
+No `.env` file required - all settings are configured in Docker Compose.
+
+### With External Database
+Create `.env` file with:
+```env
+DATABASE_URL=mysql://username:password@host:port/database
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your-secret-key
+NEXT_PUBLIC_API_URL=https://cnradiusapi.chilinet.cloud
+NEXT_PUBLIC_API_KEY=your-api-key
+```
 
 ## Troubleshooting
 
-### Container startet nicht
+### Docker Compose Version Issues
+
+If you encounter version compatibility issues:
+
+1. **Check your Docker Compose version:**
+   ```bash
+   docker-compose --version
+   ```
+
+2. **Use the appropriate setup script:**
+   - All scripts automatically detect and use the correct format
+
+3. **Manual file selection:**
+   ```bash
+   # For Docker Compose 1.x
+   docker-compose -f docker-compose-simple.yml up -d
+   
+   # For Docker Compose 2.x+
+   docker-compose -f docker-compose.yml up -d
+   ```
+
+### Database Connection Issues
+
+1. **Check if MySQL container is running:**
+   ```bash
+   docker ps
+   ```
+
+2. **Check database logs:**
+   ```bash
+   docker-compose logs db
+   ```
+
+3. **Connect to MySQL directly:**
+   ```bash
+   docker exec -it wificount-mysql mysql -u wificount -p wificnt
+   # Password: wificount123
+   
+   # Or connect from outside the container:
+   mysql -h localhost -P 3307 -u wificount -p wificnt
+   ```
+
+### Application Issues
+
+1. **Check application logs:**
+   ```bash
+   docker-compose logs app
+   ```
+
+2. **Restart application:**
+   ```bash
+   docker-compose restart app
+   ```
+
+3. **Rebuild application:**
+   ```bash
+   docker-compose up --build -d app
+   ```
+
+## Production Deployment
+
+For production deployment:
+
+1. **Change default passwords in docker-compose.yml**
+2. **Use environment variables for sensitive data**
+3. **Set up proper secrets management**
+4. **Configure reverse proxy (Nginx/Apache)**
+5. **Set up SSL certificates**
+6. **Configure backup strategies for MySQL data**
+
+## Useful Commands
+
 ```bash
-# Logs prüfen
-docker-compose logs app
+# View all logs
+docker-compose logs -f
 
-# Container-Status prüfen
-docker-compose ps
-```
+# View specific service logs
+docker-compose logs -f app
+docker-compose logs -f db
 
-### Datenbankverbindungsfehler
-- Prüfen Sie die `DATABASE_URL` in der `.env` Datei
-- Stellen Sie sicher, dass der MySQL-Server erreichbar ist
-- Prüfen Sie Firewall-Einstellungen
+# Restart services
+docker-compose restart
 
-### Port bereits belegt
-```bash
-# Anderen Port verwenden
-docker-compose up -d -p 3001:3000
-```
+# Rebuild and restart
+docker-compose up --build -d
 
-## Wartung
-
-### Logs rotieren
-```bash
-# Logs löschen
-docker-compose logs --tail=0 -f app > /dev/null
-```
-
-### Container aktualisieren
-```bash
-# Neues Image bauen und starten
+# Stop all services
 docker-compose down
-docker-compose build --no-cache
-docker-compose up -d
-```
 
-### Datenbank-Backup
-```bash
-# Backup erstellen (außerhalb des Containers)
-mysqldump -h host -u user -p database > backup.sql
+# Remove volumes (WARNING: This will delete all data)
+docker-compose down -v
+
+# Access MySQL shell
+docker exec -it wificount-mysql mysql -u wificount -p wificnt
+
+# Connect from outside container
+mysql -h localhost -P 3307 -u wificount -p wificnt
+
+# Backup database
+docker exec wificount-mysql mysqldump -u wificount -p wificnt > backup.sql
 ```
