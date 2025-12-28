@@ -11,6 +11,7 @@ type TreeProps = {
     onNodeUpdate?: (nodeId: string, updates: { name: string; category: NodeCategory }) => void;
     onNodeDelete?: (nodeId: string) => void;
     onNodeCreate?: (parentId: string | null, name: string, category: NodeCategory) => Promise<void>;
+    readOnly?: boolean;
 };
 
 export interface TreeRef {
@@ -43,7 +44,8 @@ const Tree = forwardRef<TreeRef, TreeProps>(({
     onNodeSelect, 
     onNodeUpdate, 
     onNodeDelete,
-    onNodeCreate 
+    onNodeCreate,
+    readOnly = false
 }, ref) => {
     const [nodes, setNodes] = useState<TreeNode[]>(Array.isArray(initialNodes) ? initialNodes : []);
     const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
@@ -189,13 +191,15 @@ const Tree = forwardRef<TreeRef, TreeProps>(({
         return (
             <div className="p-4">
                 <p className="text-gray-500">Keine Nodes vorhanden</p>
-                <button
-                    onClick={() => onNodeCreate?.(null, 'Neue Wurzel', 'ROOT')}
-                    className="mt-2 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-                >
-                    <PlusIcon className="h-5 w-5 mr-2" />
-                    Wurzelknoten erstellen
-                </button>
+                {!readOnly && (
+                    <button
+                        onClick={() => onNodeCreate?.(null, 'Neue Wurzel', 'ROOT')}
+                        className="mt-2 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+                    >
+                        <PlusIcon className="h-5 w-5 mr-2" />
+                        Wurzelknoten erstellen
+                    </button>
+                )}
             </div>
         );
     }
@@ -213,6 +217,7 @@ const Tree = forwardRef<TreeRef, TreeProps>(({
                     onEditStart={handleEditStart}
                     onEditSubmit={handleEditSubmit}
                     onAddSubmit={handleAddSubmit}
+                    readOnly={readOnly}
                 />
             ))}
         </div>

@@ -21,6 +21,7 @@ interface TreeNodeProps {
     onEditStart: (node: TreeNode) => void;
     onEditSubmit: () => void;
     onAddSubmit: () => void;
+    readOnly?: boolean;
 }
 
 export default function TreeNodeComponent({
@@ -31,7 +32,8 @@ export default function TreeNodeComponent({
     onCreate,
     onEditStart,
     onEditSubmit,
-    onAddSubmit
+    onAddSubmit,
+    readOnly = false
 }: TreeNodeProps) {
     const [isExpanded, setIsExpanded] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
@@ -120,34 +122,36 @@ export default function TreeNodeComponent({
                     </span>
                 )}
 
-                <div className="flex items-center space-x-2">
-                    {!isEditing && (
-                        <>
-                            <button
-                                type="button"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setIsAdding(true);
-                                }}
-                                className="text-gray-500 hover:text-gray-700"
-                            >
-                                <PlusIcon className="h-5 w-5" />
-                            </button>
-                            {(!node.children || node.children.length === 0) && (
+                {!readOnly && (
+                    <div className="flex items-center space-x-2">
+                        {!isEditing && (
+                            <>
                                 <button
                                     type="button"
-                                    onClick={handleDelete}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setIsAdding(true);
+                                    }}
                                     className="text-gray-500 hover:text-gray-700"
                                 >
-                                    <XMarkIcon className="h-5 w-5" />
+                                    <PlusIcon className="h-5 w-5" />
                                 </button>
-                            )}
-                        </>
-                    )}
-                </div>
+                                {(!node.children || node.children.length === 0) && (
+                                    <button
+                                        type="button"
+                                        onClick={handleDelete}
+                                        className="text-gray-500 hover:text-gray-700"
+                                    >
+                                        <XMarkIcon className="h-5 w-5" />
+                                    </button>
+                                )}
+                            </>
+                        )}
+                    </div>
+                )}
             </div>
 
-            {isAdding && (
+            {!readOnly && isAdding && (
                 <div className="ml-8 mt-2">
                     <form onSubmit={handleCreate} className="flex items-center space-x-2">
                         <input

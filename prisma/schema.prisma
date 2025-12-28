@@ -40,19 +40,35 @@ model Device {
 
 model CaptivePortalConfig {
   id              String   @id @default(cuid())
-  nodeId          String
-  node            TreeNode @relation(fields: [nodeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  portalName      String
+  nodeId          String?
+  node            TreeNode? @relation(fields: [nodeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  portalName      String   @map("name")
   welcomeMessage  String   @default("")
   termsOfService  String   @default("")
-  redirectUrl     String
+  redirectUrl     String?
   sessionTimeout  Int      @default(3600)
   maxBandwidth    Int      @default(1024)
   isActive        Boolean  @default(true)
+  logoUrl         String?  @default("")
+  welcomeHeading  String?  @default("")
+  welcomeText     String?  @default("")
+  hintText        String?  @default("")
+  backgroundColor String?  @default("#000000")
+  backgroundImage String?  @default("") @db.Text
+  portalBackgroundColor String?  @default("#111111")
+  buttonColor     String?  @default("#ff9800")
+  buttonText      String?  @default("Internet")
+  termsLinkText   String?  @default("")
+  headingColor    String?  @default("#ffffff")
+  welcomeTextColor String?  @default("#ffffff")
+  hintTextColor   String?  @default("#ffffff")
+  buttonTextColor String?  @default("#000000")
+  description     String?  // Keep existing field
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   @@index([nodeId])
+  @@map("CaptivePortal")
 }
 
 model TreeNode {

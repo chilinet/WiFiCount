@@ -1,7 +1,7 @@
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import { UserRole } from '@/types/auth';
-import { Cog6ToothIcon, UserGroupIcon, DevicePhoneMobileIcon } from '@heroicons/react/24/outline';
+import { Cog6ToothIcon, UserGroupIcon, DevicePhoneMobileIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
 
 export default function Settings() {
     const router = useRouter();
@@ -27,6 +27,12 @@ export default function Settings() {
                 description: 'Verwalten Sie angeschlossene Geräte',
                 icon: DevicePhoneMobileIcon,
                 href: '/settings/devices',
+            },
+            {
+                title: 'Captive Portal',
+                description: 'Verwalten Sie Captive Portal Konfigurationen',
+                icon: GlobeAltIcon,
+                href: '/settings/captive-portal',
             },
         ] : []),
     ];
