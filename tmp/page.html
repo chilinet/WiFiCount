@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="./images/favicon.ico">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#161615" />
+      <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+    <meta
+      name="description"
+      content="Schöner surfen mit Chilinet."
+    />
+    <link rel="stylesheet" href="./css/fonts.css">
+    <link rel="stylesheet" href="./css/styles.css">
+    <link rel='stylesheet' id='google-fonts-1-css'  href='https://fonts.googleapis.com/css?family=Roboto%3A100%2C100italic%2C200%2C200italic%2C300%2C300italic%2C400%2C400italic%2C500%2C500italic%2C600%2C600italic%2C700%2C700italic%2C800%2C800italic%2C900%2C900italic%7CRoboto+Slab%3A100%2C100italic%2C200%2C200italic%2C300%2C300italic%2C400%2C400italic%2C500%2C500italic%2C600%2C600italic%2C700%2C700italic%2C800%2C800italic%2C900%2C900italic%7CMontserrat%3A100%2C100italic%2C200%2C200italic%2C300%2C300italic%2C400%2C400italic%2C500%2C500italic%2C600%2C600italic%2C700%2C700italic%2C800%2C800italic%2C900%2C900italic&#038;ver=5.5.5' media='all' />
+    <title>Chilinet Solutuions GmbH</title>
+</head>
+
+<body>
+<div class="container text-center">
+    <div>
+        <h1>SCHÖNER <br /> SURFEN</h1>
+        <br />
+        <h2 class="color-primary">MIT</h2>
+        <br />
+        <img class="logo" src="./images/captiveportal-chilinet-logo.png">
+
+        <br />
+        <br />
+        <h5 class="color-primary">Jetzt kostenlos ins Internet</h5>
+
+        <p>Durch das Klicken auf den Button Internet bestätigen Sie die Nutzungsbedingungen</p>
+        <button class="button" onclick="sendcnLoginrequest()" class="internet_button" >Internet</button>
+
+
+        <div style="display: none;">
+            <p id="clientmac"> </p>
+            <p id="clientip"> </p>
+            <p id="loginurl"> </p>
+            <p id="redirectafterlogin">https://chilinet.solutions</p>
+        </div>
+
+        <p id="Request" ></p>
+        <p id="Result" ></p>
+
+    </div>
+</div>
+<script src="./js/cpcontroller.js"></script>
+
+</body>
+</html>
