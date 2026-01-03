@@ -5,6 +5,13 @@ const nextConfig = {
   output: 'standalone',
   distDir: '.next',
   poweredByHeader: false,
+  // Allow cross-origin requests from development origins
+  allowedDevOrigins: [
+    '192.168.100.200',
+    '10.1.0.136',
+    'localhost',
+    '127.0.0.1',
+  ],
   env: {
     PORT: process.env.PORT || 3000
   },

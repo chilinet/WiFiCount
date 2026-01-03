@@ -417,6 +417,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     });
 
     const { ga_ap_mac } = context.query;
+    const ga_cmac = urlParams.ga_cmac || '';
 
     // Prüfe ob ga_ap_mac Parameter vorhanden ist
     if (!ga_ap_mac || typeof ga_ap_mac !== 'string') {
@@ -459,15 +460,22 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     }
 
     try {
-        // Konvertiere MAC-Adresse von "-" zu ":"
-        // z.B. "BC-A9-93-5F-AC-2C" -> "BC:A9:93:5F:AC:2C"
-        const macAddress = ga_cmac.replace(/-/g, ':').toUpperCase();
-        console.log(`Suche Device mit MAC-Adresse: ${macAddress}`);
+        // ga_ap_mac ist die MAC-Adresse des Access Points, die in der Device-Tabelle gespeichert ist
+        // Normalisiere MAC-Adresse: Entferne alle Trennzeichen und konvertiere zu Großbuchstaben
+        const normalizedMac = ga_ap_mac.replace(/[-:]/g, '').toUpperCase();
+        // Erstelle beide Varianten: mit ":" und mit "-"
+        const macAddressWithColon = normalizedMac.match(/.{2}/g)?.join(':') || '';
+        const macAddressWithDash = normalizedMac.match(/.{2}/g)?.join('-') || '';
+        
+        console.log(`Suche Device (Access Point) mit MAC-Adresse: ${macAddressWithColon} oder ${macAddressWithDash}`);
 
-        // Finde Device über macAddress
+        // Finde Device über macAddress (ga_ap_mac) - suche beide Formate
         const device = await prisma.device.findFirst({
             where: {
-                macAddress: macAddress
+                OR: [
+                    { macAddress: macAddressWithColon },
+                    { macAddress: macAddressWithDash }
+                ]
             },
             include: {
                 area: {
@@ -480,7 +488,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
         });
 
         if (!device || !device.area) {
-            console.error(`Device mit MAC-Adresse ${macAddress} nicht gefunden`);
+            console.error(`Device (Access Point) mit MAC-Adresse ${macAddressWithColon} oder ${macAddressWithDash} nicht gefunden`);
             // Verwende Standardwerte wenn Device nicht gefunden wird
             return {
                 props: {
