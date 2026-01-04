@@ -26,22 +26,51 @@ interface AccessPointStats {
     total_bytes: string;
 }
 
+interface SessionData {
+    username: string;
+    client_mac: string;
+    client_ip: string;
+    ap_ip: string;
+    ap_bssid_ssid: string;
+    ap_bssid: string;
+    ssid: string;
+    acctsessionid: string;
+    acctstarttime: string;
+    last_update: string;
+    session_time_seconds: string;
+    bytes_rx: number;
+    bytes_tx: number;
+    bytes_total: number;
+}
+
+interface SessionsResponse {
+    success: boolean;
+    count: number;
+    ap_mac: string[];
+    ap_mac_count: number;
+    data: SessionData[];
+}
+
 interface DashboardProps {
     nodes: TreeNode[];
 }
 
 type TimeRange = '7d' | '14d' | '30d' | '3m' | '6m' | '1y';
+type TabType = 'statistics' | 'sessions';
 
 export default function Dashboard({ nodes }: DashboardProps) {
     const { data: session } = useSession();
     const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
     const [devices, setDevices] = useState<Device[]>([]);
     const [stats, setStats] = useState<AccessPointStats[]>([]);
+    const [sessions, setSessions] = useState<SessionData[]>([]);
     const [timeRange, setTimeRange] = useState<TimeRange>('30d');
     const [isLoading, setIsLoading] = useState(false);
+    const [isLoadingSessions, setIsLoadingSessions] = useState(false);
     const [filteredNodes, setFilteredNodes] = useState<TreeNode[]>([]);
     const [tree, setTree] = useState<TreeNode[]>([]);
     const [isStructureOpen, setIsStructureOpen] = useState(true);
+    const [activeTab, setActiveTab] = useState<TabType>('statistics');
 
     // Funktion zum Aufbauen der Baumstruktur
     const buildTree = (nodes: TreeNode[], parentId: string | null = null): TreeNode[] => {
@@ -123,6 +152,24 @@ export default function Dashboard({ nodes }: DashboardProps) {
 
     const formatMacAddress = (mac: string) => {
         return mac.replace(/:/g, '-');
+    };
+
+    // Sammle alle Access Point MAC-Adressen für den ausgewählten Node und alle untergeordneten Bereiche
+    const getAllAccessPointMacs = (node: TreeNode, allDevices: Device[]): string[] => {
+        const macs: string[] = [];
+        const areaIds = getSubordinateAreaIds(node);
+        
+        areaIds.forEach(areaId => {
+            const areaDevices = allDevices.filter(d => d.areaId === areaId);
+            areaDevices.forEach(device => {
+                const mac = formatMacAddress(device.macAddress);
+                if (!macs.includes(mac)) {
+                    macs.push(mac);
+                }
+            });
+        });
+        
+        return macs;
     };
 
     const getDateRange = (range: TimeRange) => {
@@ -211,6 +258,67 @@ export default function Dashboard({ nodes }: DashboardProps) {
 
         loadDevices();
     }, [selectedNode, timeRange]);
+
+    // Lade Sessions wenn der Sessions-Tab aktiv ist
+    useEffect(() => {
+        const loadSessions = async () => {
+            if (selectedNode && activeTab === 'sessions' && devices.length > 0) {
+                setIsLoadingSessions(true);
+                try {
+                    const apMacs = getAllAccessPointMacs(selectedNode, devices);
+                    
+                    if (apMacs.length > 0) {
+                        const apMacsParam = apMacs.join(',');
+                        const response = await fetch(`/api/sessions?ap_mac=${encodeURIComponent(apMacsParam)}`);
+                        
+                        if (response.ok) {
+                            const data: SessionsResponse = await response.json();
+                            setSessions(data.data || []);
+                        } else {
+                            console.error('Fehler beim Laden der Sessions');
+                            setSessions([]);
+                        }
+                    } else {
+                        setSessions([]);
+                    }
+                } catch (error) {
+                    console.error('Fehler beim Laden der Sessions:', error);
+                    setSessions([]);
+                } finally {
+                    setIsLoadingSessions(false);
+                }
+            } else {
+                setSessions([]);
+            }
+        };
+
+        loadSessions();
+    }, [selectedNode, activeTab, devices]);
+
+    // Formatierung für Session-Zeit
+    const formatSessionTime = (seconds: string): string => {
+        const totalSeconds = parseInt(seconds);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const secs = totalSeconds % 60;
+        
+        if (hours > 0) {
+            return `${hours}h ${minutes}m ${secs}s`;
+        } else if (minutes > 0) {
+            return `${minutes}m ${secs}s`;
+        } else {
+            return `${secs}s`;
+        }
+    };
+
+    // Formatierung für Bytes
+    const formatBytes = (bytes: number): string => {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+    };
 
     const getChartOptions = () => {
         // Erstelle eine kontinuierliche Zeitachse für den gesamten Zeitraum
@@ -473,60 +581,186 @@ export default function Dashboard({ nodes }: DashboardProps) {
                     {/* Rest des Inhalts */}
                     <div className="w-full">
                         <div className="flex justify-between items-center mb-4">
-                            <h1 className="text-2xl font-bold text-gray-900">Statistiken</h1>
-                            <div className="flex space-x-2">
-                                <select
-                                    value={timeRange}
-                                    onChange={(e) => setTimeRange(e.target.value as TimeRange)}
-                                    className="px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                >
-                                    <option value="7d">7 Tage</option>
-                                    <option value="14d">14 Tage</option>
-                                    <option value="30d">30 Tage</option>
-                                    <option value="3m">3 Monate</option>
-                                    <option value="6m">6 Monate</option>
-                                    <option value="1y">1 Jahr</option>
-                                </select>
-                            </div>
+                            <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+                            {activeTab === 'statistics' && (
+                                <div className="flex space-x-2">
+                                    <select
+                                        value={timeRange}
+                                        onChange={(e) => setTimeRange(e.target.value as TimeRange)}
+                                        className="px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="7d">7 Tage</option>
+                                        <option value="14d">14 Tage</option>
+                                        <option value="30d">30 Tage</option>
+                                        <option value="3m">3 Monate</option>
+                                        <option value="6m">6 Monate</option>
+                                        <option value="1y">1 Jahr</option>
+                                    </select>
+                                </div>
+                            )}
                         </div>
+
+                        {/* Tabs */}
+                        <div className="border-b border-gray-200 mb-6">
+                            <nav className="-mb-px flex space-x-8">
+                                <button
+                                    onClick={() => setActiveTab('statistics')}
+                                    className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                                        activeTab === 'statistics'
+                                            ? 'border-blue-500 text-blue-600'
+                                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    }`}
+                                >
+                                    Statistiken
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('sessions')}
+                                    className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                                        activeTab === 'sessions'
+                                            ? 'border-blue-500 text-blue-600'
+                                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    }`}
+                                >
+                                    Sessions
+                                </button>
+                            </nav>
+                        </div>
+
                         {selectedNode ? (
                             <div className="mt-6">
-                                <h2 className="text-lg font-semibold mb-4">
-                                    Statistiken für {selectedNode.name} und untergeordnete Bereiche
-                                </h2>
-                                {isLoading ? (
-                                    <div className="flex justify-center items-center h-96">
-                                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-                                    </div>
-                                ) : stats.length > 0 ? (
-                                    <div className="space-y-8">
-                                        <div className="w-full">
-                                            <ReactECharts
-                                                option={getChartOptions().totalOption}
-                                                style={{ height: '400px', width: '100%' }}
-                                            />
-                                        </div>
-                                        <div className="w-full">
-                                            <ReactECharts
-                                                option={getChartOptions().totalSessionsOption}
-                                                style={{ height: '400px', width: '100%' }}
-                                            />
-                                        </div>
-                                        <div className="w-full">
-                                            <ReactECharts
-                                                option={getChartOptions().areaBytesOption}
-                                                style={{ height: '400px', width: '100%' }}
-                                            />
-                                        </div>
-                                        <div className="w-full">
-                                            <ReactECharts
-                                                option={getChartOptions().areaSessionsOption}
-                                                style={{ height: '400px', width: '100%' }}
-                                            />
-                                        </div>
-                                    </div>
+                                {activeTab === 'statistics' ? (
+                                    <>
+                                        <h2 className="text-lg font-semibold mb-4">
+                                            Statistiken für {selectedNode.name} und untergeordnete Bereiche
+                                        </h2>
+                                        {isLoading ? (
+                                            <div className="flex justify-center items-center h-96">
+                                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                                            </div>
+                                        ) : stats.length > 0 ? (
+                                            <div className="space-y-8">
+                                                <div className="w-full">
+                                                    <ReactECharts
+                                                        option={getChartOptions().totalOption}
+                                                        style={{ height: '400px', width: '100%' }}
+                                                    />
+                                                </div>
+                                                <div className="w-full">
+                                                    <ReactECharts
+                                                        option={getChartOptions().totalSessionsOption}
+                                                        style={{ height: '400px', width: '100%' }}
+                                                    />
+                                                </div>
+                                                <div className="w-full">
+                                                    <ReactECharts
+                                                        option={getChartOptions().areaBytesOption}
+                                                        style={{ height: '400px', width: '100%' }}
+                                                    />
+                                                </div>
+                                                <div className="w-full">
+                                                    <ReactECharts
+                                                        option={getChartOptions().areaSessionsOption}
+                                                        style={{ height: '400px', width: '100%' }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <p className="text-gray-500">Keine Statistiken verfügbar</p>
+                                        )}
+                                    </>
                                 ) : (
-                                    <p className="text-gray-500">Keine Statistiken verfügbar</p>
+                                    <>
+                                        <h2 className="text-lg font-semibold mb-4">
+                                            Aktive Sessions für {selectedNode.name} und untergeordnete Bereiche
+                                        </h2>
+                                        {isLoadingSessions ? (
+                                            <div className="flex justify-center items-center h-96">
+                                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                                            </div>
+                                        ) : sessions.length > 0 ? (
+                                            <div className="bg-white shadow overflow-hidden sm:rounded-md">
+                                                <div className="overflow-x-auto">
+                                                    <table className="min-w-full divide-y divide-gray-200">
+                                                        <thead className="bg-gray-50">
+                                                            <tr>
+                                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                    Username
+                                                                </th>
+                                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                    Client MAC
+                                                                </th>
+                                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                    Client IP
+                                                                </th>
+                                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                    Access Point
+                                                                </th>
+                                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                    SSID
+                                                                </th>
+                                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                    Session Zeit
+                                                                </th>
+                                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                    Daten (RX/TX)
+                                                                </th>
+                                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                    Startzeit
+                                                                </th>
+                                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                    Letzte Aktualisierung
+                                                                </th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="bg-white divide-y divide-gray-200">
+                                                            {sessions.map((session, index) => (
+                                                                <tr key={session.acctsessionid || index} className="hover:bg-gray-50">
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                                        {session.username}
+                                                                    </td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
+                                                                        {session.client_mac}
+                                                                    </td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                                        {session.client_ip}
+                                                                    </td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
+                                                                        {session.ap_bssid}
+                                                                    </td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                                        {session.ssid}
+                                                                    </td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                                        {formatSessionTime(session.session_time_seconds)}
+                                                                    </td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                                        <div className="flex flex-col">
+                                                                            <span className="text-green-600">↓ {formatBytes(session.bytes_rx)}</span>
+                                                                            <span className="text-blue-600">↑ {formatBytes(session.bytes_tx)}</span>
+                                                                            <span className="text-gray-600 font-semibold">Σ {formatBytes(session.bytes_total)}</span>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                                        {new Date(session.acctstarttime).toLocaleString('de-DE')}
+                                                                    </td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                                        {new Date(session.last_update).toLocaleString('de-DE')}
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                                <div className="bg-gray-50 px-6 py-3 border-t border-gray-200">
+                                                    <p className="text-sm text-gray-700">
+                                                        Gesamt: <span className="font-semibold">{sessions.length}</span> aktive Session{sessions.length !== 1 ? 's' : ''}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <p className="text-gray-500">Keine aktiven Sessions verfügbar</p>
+                                        )}
+                                    </>
                                 )}
                             </div>
                         ) : (
