@@ -1,16 +1,63 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { prisma } from '@/lib/prisma';
+import { getToken } from 'next-auth/jwt';
 
 type NodeCategory = 'ROOT' | 'KUNDE' | 'STANDORT' | 'BEREICH';
+
+// Helper-Funktion: Finde alle Nachfolger-Nodes eines bestimmten Nodes
+async function findAllDescendants(nodeId: string): Promise<string[]> {
+    const descendants: string[] = [];
+    const directChildren = await prisma.treeNode.findMany({
+        where: { parentId: nodeId }
+    });
+
+    for (const child of directChildren) {
+        descendants.push(child.id);
+        const grandChildren = await findAllDescendants(child.id);
+        descendants.push(...grandChildren);
+    }
+
+    return descendants;
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method === 'GET') {
         try {
-            const nodes = await prisma.treeNode.findMany({
-                orderBy: {
-                    name: 'asc'
-                }
-            });
+            // Prüfe Authentifizierung
+            const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+            
+            let nodes;
+            
+            if (token?.role === 'SUPERADMIN') {
+                // SUPERADMIN sieht alle Nodes
+                nodes = await prisma.treeNode.findMany({
+                    orderBy: {
+                        name: 'asc'
+                    }
+                });
+            } else if (token?.role === 'ADMIN' && token?.nodeId && token.nodeId !== 'NULL' && token.nodeId !== null) {
+                // ADMIN sieht nur Nodes ab seinem zugewiesenen Kunden
+                const adminNodeId = token.nodeId as string;
+                
+                // Finde alle Nachfolger-Nodes
+                const descendantIds = await findAllDescendants(adminNodeId);
+                const allowedNodeIds = [adminNodeId, ...descendantIds];
+                
+                nodes = await prisma.treeNode.findMany({
+                    where: {
+                        id: {
+                            in: allowedNodeIds
+                        }
+                    },
+                    orderBy: {
+                        name: 'asc'
+                    }
+                });
+            } else {
+                // USER oder nicht authentifizierte Benutzer sehen keine Nodes
+                nodes = [];
+            }
+            
             res.status(200).json(nodes);
         } catch (error) {
             console.error('Fehler beim Abrufen der Nodes:', error);

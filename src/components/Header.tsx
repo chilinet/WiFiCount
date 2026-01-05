@@ -1,8 +1,8 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState, useRef, useEffect } from 'react';
-import { Bars3Icon, XMarkIcon, UserCircleIcon, Cog6ToothIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
-import { useSession, signOut } from 'next-auth/react';
+import { Bars3Icon, XMarkIcon, UserCircleIcon, Cog6ToothIcon, ArrowRightOnRectangleIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { useSession, signOut, signIn } from 'next-auth/react';
 import { useRouter } from 'next/router';
 
 export default function Header() {
@@ -47,10 +47,68 @@ export default function Header() {
         }
     };
 
+    const handleEndImpersonation = async () => {
+        try {
+            // Rufe die API auf, die einen Cookie setzt
+            const response = await fetch('/api/auth/end-impersonation', {
+                method: 'POST',
+                credentials: 'include',
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                
+                // Melde dich als ursprünglicher Benutzer an
+                const result = await signIn('credentials', {
+                    email: data.email,
+                    password: '', // Wird nicht benötigt, da Restore über Cookie erkannt wird
+                    redirect: false,
+                });
+
+                if (result?.ok) {
+                    // Seite neu laden, um die neue Session zu aktivieren
+                    window.location.href = '/dashboard';
+                } else {
+                    alert('Fehler beim Zurückkehren. Bitte versuchen Sie es erneut.');
+                }
+            } else {
+                const error = await response.json();
+                alert(error.error || 'Fehler beim Zurückkehren');
+            }
+        } catch (error) {
+            console.error('Fehler beim Beenden der Impersonation:', error);
+            alert('Fehler beim Zurückkehren');
+        }
+    };
+
+    const isImpersonated = (session as any)?.isImpersonated || false;
+
     return (
-        <header className="bg-white shadow-sm">
-            <div className="max-w-1xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex items-center justify-between h-16">
+        <>
+            {/* Impersonation Banner */}
+            {isImpersonated && (
+                <div className="bg-yellow-400 border-b border-yellow-500">
+                    <div className="max-w-1xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="flex items-center justify-between py-2">
+                            <div className="flex items-center space-x-2">
+                                <span className="text-sm font-medium text-yellow-900">
+                                    ⚠️ Sie sind als <strong>{session?.user?.name}</strong> angemeldet (Impersonation)
+                                </span>
+                            </div>
+                            <button
+                                onClick={handleEndImpersonation}
+                                className="flex items-center space-x-1 px-3 py-1 bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-medium rounded-md transition-colors duration-150"
+                            >
+                                <ArrowLeftIcon className="h-4 w-4" />
+                                <span>Zurückkehren</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            <header className="bg-white shadow-sm">
+                <div className="max-w-1xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex items-center justify-between h-16">
                     {/* Logo */}
                     <div className="flex-shrink-0">
                         <Link href="/">
@@ -185,5 +243,6 @@ export default function Header() {
                 )}
             </div>
         </header>
+        </>
     );
 } 

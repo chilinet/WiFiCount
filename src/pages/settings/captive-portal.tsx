@@ -4,6 +4,9 @@ import Tree from '@/components/Tree';
 import { prisma } from '@/lib/prisma';
 import { TreeNode } from '@/types/tree';
 import DevicePreview from '@/components/DevicePreview';
+import { getServerSession } from 'next-auth';
+import authOptions from '@/pages/api/auth/[...nextauth]';
+import { getToken } from 'next-auth/jwt';
 
 interface CaptivePortalConfig {
     id: string;
@@ -72,6 +75,7 @@ export default function CaptivePortalPage({ initialNodes }: CaptivePortalPagePro
     const [editingConfigId, setEditingConfigId] = useState<string | null>(null);
     const [editingConfig, setEditingConfig] = useState<CaptivePortalConfig | null>(null);
     const [displayedConfig, setDisplayedConfig] = useState<CaptivePortalConfig | null>(null);
+    const [isCreatingNew, setIsCreatingNew] = useState<boolean>(false);
 
     // Debug: Log backgroundImage changes
     useEffect(() => {
@@ -164,9 +168,11 @@ export default function CaptivePortalPage({ initialNodes }: CaptivePortalPagePro
                             setBackgroundImagePreview('');
                         }
                         setEditingConfigId(null); // Keine ID = neue Konfiguration wird erstellt
+                        setIsCreatingNew(false); // Reset beim Laden
                     }
                 } else {
                     setDisplayedConfig(null);
+                    setIsCreatingNew(false); // Reset beim Laden
                     // Keine Konfiguration vorhanden - Standardwerte
                     setNewConfig({
                         portalName: '',
@@ -192,6 +198,7 @@ export default function CaptivePortalPage({ initialNodes }: CaptivePortalPagePro
                         buttonTextColor: '#000000'
                     });
                     setEditingConfigId(null);
+                    setIsCreatingNew(false); // Reset beim Laden
                 }
             } else {
                 const errorData = await response.json();
@@ -200,6 +207,16 @@ export default function CaptivePortalPage({ initialNodes }: CaptivePortalPagePro
         } catch (error) {
             console.error('Fehler beim Laden der Captive Portal Konfigurationen:', error);
         }
+    };
+
+    const handleCreateNewPortal = () => {
+        setIsCreatingNew(true);
+        setEditingConfigId(null);
+        // Setze Portal Name auf leer
+        setNewConfig({
+            ...newConfig,
+            portalName: ''
+        });
     };
 
     const handleConfigSelect = (config: CaptivePortalConfig) => {
@@ -233,7 +250,7 @@ export default function CaptivePortalPage({ initialNodes }: CaptivePortalPagePro
                 });
             } else {
                 // Erstelle neue Konfiguration für diesen Node (überschreibt Vererbung)
-                // Portal Name ist erforderlich
+                // Portal Name ist erforderlich - wenn leer, verwende Node Name
                 if (!configToSave.portalName) {
                     configToSave.portalName = selectedNode.name;
                 }
@@ -497,6 +514,10 @@ export default function CaptivePortalPage({ initialNodes }: CaptivePortalPagePro
         return selectedNode && config.nodeId !== selectedNode.id;
     };
 
+    const isReadOnly = () => {
+        return displayedConfig && !editingConfigId && !isCreatingNew;
+    };
+
     return (
         <div className="flex h-full">
             {/* Linke Seite: Struktur */}
@@ -537,18 +558,35 @@ export default function CaptivePortalPage({ initialNodes }: CaptivePortalPagePro
                         <div className="bg-white p-6 rounded-lg shadow-md mb-6">
                                 <h3 className="text-lg font-medium text-gray-900 mb-4">
                                     {editingConfigId ? 'Captive Portal Konfiguration bearbeiten' : 'Captive Portal Konfiguration'}
-                                    {displayedConfig && !editingConfigId && (
+                                    {displayedConfig && !editingConfigId && !isCreatingNew && (
                                         <span className="ml-2 text-sm text-blue-600 font-normal">
                                             (Vererbt von {getNodeName(displayedConfig.nodeId)} - Änderungen erstellen neue Konfiguration)
                                         </span>
                                     )}
                                 </h3>
-                                {displayedConfig && !editingConfigId && (
-                                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                                        <p className="text-sm text-blue-800">
-                                            <strong>Hinweis:</strong> Die aktuell angezeigten Werte werden von einem übergeordneten Node vererbt. 
-                                            Wenn Sie Änderungen vornehmen und speichern, wird eine neue Konfiguration für diesen Node erstellt, 
-                                            die die Vererbung überschreibt.
+                                {displayedConfig && !editingConfigId && !isCreatingNew && (
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={handleCreateNewPortal}
+                                            className="mb-4 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            Neues Captive Portal erstellen
+                                        </button>
+                                        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                                            <p className="text-sm text-blue-800">
+                                                <strong>Hinweis:</strong> Die aktuell angezeigten Werte werden von einem übergeordneten Node vererbt. 
+                                                Wenn Sie Änderungen vornehmen und speichern, wird eine neue Konfiguration für diesen Node erstellt, 
+                                                die die Vererbung überschreibt.
+                                            </p>
+                                        </div>
+                                    </>
+                                )}
+                                {displayedConfig && !editingConfigId && isCreatingNew && (
+                                    <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                                        <p className="text-sm text-yellow-800">
+                                            <strong>Hinweis:</strong> Sie erstellen eine neue Konfiguration für diesen Node. 
+                                            Diese überschreibt die vererbten Werte.
                                         </p>
                                     </div>
                                 )}
@@ -561,9 +599,9 @@ export default function CaptivePortalPage({ initialNodes }: CaptivePortalPagePro
                                             type="text"
                                             value={newConfig.portalName}
                                             onChange={(e) => setNewConfig({...newConfig, portalName: e.target.value})}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            placeholder={displayedConfig && !editingConfigId ? displayedConfig.portalName : 'Portal Name'}
-                                            required
+                                            className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly() ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                            placeholder={isReadOnly() ? displayedConfig?.portalName : 'Portal Name (leer = Node Name)'}
+                                            disabled={isReadOnly()}
                                         />
                                     </div>
                                     <div>
@@ -579,9 +617,10 @@ export default function CaptivePortalPage({ initialNodes }: CaptivePortalPagePro
                                                     setLogoPreview(''); // Lösche Preview wenn URL geändert wird
                                                 }}
                                                 placeholder="Logo URL"
-                                                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                disabled={isReadOnly()}
+                                                className={`flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly() ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                             />
-                                            {(newConfig.logoUrl || logoPreview) && (
+                                            {(newConfig.logoUrl || logoPreview) && !isReadOnly() && (
                                                 <button
                                                     type="button"
                                                     onClick={() => {
@@ -682,6 +721,7 @@ export default function CaptivePortalPage({ initialNodes }: CaptivePortalPagePro
                                                     return val.substring(0, 7);
                                                 })()}
                                                 onChange={(e) => {
+                                                    if (isReadOnly()) return;
                                                     const currentValue = newConfig.backgroundColor || '';
                                                     if (currentValue.startsWith('rgba')) {
                                                         const rgbaMatch = currentValue.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
@@ -699,14 +739,18 @@ export default function CaptivePortalPage({ initialNodes }: CaptivePortalPagePro
                                                         setNewConfig({...newConfig, backgroundColor: e.target.value});
                                                     }
                                                 }}
-                                                className="h-10 w-20 border border-gray-300 rounded"
+                                                disabled={isReadOnly()}
+                                                className={`h-10 w-20 border border-gray-300 rounded ${isReadOnly() ? 'cursor-not-allowed opacity-50' : ''}`}
                                             />
                                             <input
                                                 type="text"
                                                 value={newConfig.backgroundColor}
-                                                onChange={(e) => setNewConfig({...newConfig, backgroundColor: e.target.value})}
+                                                onChange={(e) => {
+                                                    if (!isReadOnly()) setNewConfig({...newConfig, backgroundColor: e.target.value});
+                                                }}
                                                 placeholder="#000000 oder rgba(0, 0, 0, 0.5)"
-                                                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                disabled={isReadOnly()}
+                                                className={`flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly() ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                             />
                                         </div>
                                         {newConfig.backgroundColor && (newConfig.backgroundColor.startsWith('rgba') || newConfig.backgroundColor.startsWith('rgb')) && (
@@ -727,13 +771,15 @@ export default function CaptivePortalPage({ initialNodes }: CaptivePortalPagePro
                                                         return match ? parseFloat(match[1]) : 1;
                                                     })()}
                                                     onChange={(e) => {
+                                                        if (isReadOnly()) return;
                                                         const alpha = parseFloat(e.target.value);
                                                         const match = newConfig.backgroundColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
                                                         if (match) {
                                                             setNewConfig({...newConfig, backgroundColor: `rgba(${match[1]}, ${match[2]}, ${match[3]}, ${alpha})`});
                                                         }
                                                     }}
-                                                    className="w-full"
+                                                    disabled={isReadOnly()}
+                                                    className={`w-full ${isReadOnly() ? 'cursor-not-allowed opacity-50' : ''}`}
                                                 />
                                             </div>
                                         )}
@@ -750,13 +796,16 @@ export default function CaptivePortalPage({ initialNodes }: CaptivePortalPagePro
                                                 type="text"
                                                 value={newConfig.backgroundImage || ''}
                                                 onChange={(e) => {
-                                                    setNewConfig(prev => ({...prev, backgroundImage: e.target.value}));
-                                                    setBackgroundImagePreview(''); // Lösche Preview wenn URL geändert wird
+                                                    if (!isReadOnly()) {
+                                                        setNewConfig(prev => ({...prev, backgroundImage: e.target.value}));
+                                                        setBackgroundImagePreview(''); // Lösche Preview wenn URL geändert wird
+                                                    }
                                                 }}
                                                 placeholder="Hintergrundbild URL"
-                                                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                disabled={isReadOnly()}
+                                                className={`flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly() ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                             />
-                                            {(newConfig.backgroundImage || backgroundImagePreview) && (
+                                            {(newConfig.backgroundImage || backgroundImagePreview) && !isReadOnly() && (
                                                 <button
                                                     type="button"
                                                     onClick={() => {
@@ -922,6 +971,7 @@ export default function CaptivePortalPage({ initialNodes }: CaptivePortalPagePro
                                                     return val.substring(0, 7);
                                                 })()}
                                                 onChange={(e) => {
+                                                    if (isReadOnly()) return;
                                                     const currentValue = newConfig.portalBackgroundColor || '';
                                                     if (currentValue.startsWith('rgba')) {
                                                         const rgbaMatch = currentValue.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
@@ -939,14 +989,18 @@ export default function CaptivePortalPage({ initialNodes }: CaptivePortalPagePro
                                                         setNewConfig({...newConfig, portalBackgroundColor: e.target.value});
                                                     }
                                                 }}
-                                                className="h-10 w-20 border border-gray-300 rounded"
+                                                disabled={isReadOnly()}
+                                                className={`h-10 w-20 border border-gray-300 rounded ${isReadOnly() ? 'cursor-not-allowed opacity-50' : ''}`}
                                             />
                                             <input
                                                 type="text"
                                                 value={newConfig.portalBackgroundColor}
-                                                onChange={(e) => setNewConfig({...newConfig, portalBackgroundColor: e.target.value})}
+                                                onChange={(e) => {
+                                                    if (!isReadOnly()) setNewConfig({...newConfig, portalBackgroundColor: e.target.value});
+                                                }}
                                                 placeholder="#111111 oder rgba(17, 17, 17, 0.8)"
-                                                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                disabled={isReadOnly()}
+                                                className={`flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly() ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                             />
                                         </div>
                                         {newConfig.portalBackgroundColor && (newConfig.portalBackgroundColor.startsWith('rgba') || newConfig.portalBackgroundColor.startsWith('rgb')) && (
@@ -967,13 +1021,15 @@ export default function CaptivePortalPage({ initialNodes }: CaptivePortalPagePro
                                                         return match ? parseFloat(match[1]) : 1;
                                                     })()}
                                                     onChange={(e) => {
+                                                        if (isReadOnly()) return;
                                                         const alpha = parseFloat(e.target.value);
                                                         const match = newConfig.portalBackgroundColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
                                                         if (match) {
                                                             setNewConfig({...newConfig, portalBackgroundColor: `rgba(${match[1]}, ${match[2]}, ${match[3]}, ${alpha})`});
                                                         }
                                                     }}
-                                                    className="w-full"
+                                                    disabled={isReadOnly()}
+                                                    className={`w-full ${isReadOnly() ? 'cursor-not-allowed opacity-50' : ''}`}
                                                 />
                                             </div>
                                         )}
@@ -989,25 +1045,34 @@ export default function CaptivePortalPage({ initialNodes }: CaptivePortalPagePro
                                             <input
                                                 type="text"
                                                 value={newConfig.welcomeHeading}
-                                                onChange={(e) => setNewConfig(prev => ({...prev, welcomeHeading: e.target.value}))}
+                                                onChange={(e) => {
+                                                    if (!isReadOnly()) setNewConfig(prev => ({...prev, welcomeHeading: e.target.value}));
+                                                }}
                                                 placeholder="Willkommen im Gäste-WLAN"
-                                                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                disabled={isReadOnly()}
+                                                className={`flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly() ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                             />
                                             <div className="flex gap-2 items-center">
                                                 <label className="text-xs text-gray-600 whitespace-nowrap">Schriftfarbe:</label>
                                                 <input
                                                     type="color"
                                                     value={newConfig.headingColor}
-                                                    onChange={(e) => setNewConfig(prev => ({...prev, headingColor: e.target.value}))}
-                                                    className="h-10 w-16 border border-gray-300 rounded"
+                                                    onChange={(e) => {
+                                                        if (!isReadOnly()) setNewConfig(prev => ({...prev, headingColor: e.target.value}));
+                                                    }}
+                                                    disabled={isReadOnly()}
+                                                    className={`h-10 w-16 border border-gray-300 rounded ${isReadOnly() ? 'cursor-not-allowed opacity-50' : ''}`}
                                                     title="Schriftfarbe"
                                                 />
                                                 <input
                                                     type="text"
                                                     value={newConfig.headingColor}
-                                                    onChange={(e) => setNewConfig(prev => ({...prev, headingColor: e.target.value}))}
+                                                    onChange={(e) => {
+                                                        if (!isReadOnly()) setNewConfig(prev => ({...prev, headingColor: e.target.value}));
+                                                    }}
                                                     placeholder="#ffffff"
-                                                    className="w-24 px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                                    disabled={isReadOnly()}
+                                                    className={`w-24 px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${isReadOnly() ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                                 />
                                             </div>
                                         </div>
@@ -1019,26 +1084,35 @@ export default function CaptivePortalPage({ initialNodes }: CaptivePortalPagePro
                                         <div className="flex gap-2 items-start">
                                             <textarea
                                                 value={newConfig.welcomeText}
-                                                onChange={(e) => setNewConfig(prev => ({...prev, welcomeText: e.target.value}))}
+                                                onChange={(e) => {
+                                                    if (!isReadOnly()) setNewConfig(prev => ({...prev, welcomeText: e.target.value}));
+                                                }}
                                                 placeholder="Sie sind nur noch einen Klick vom Internetzugang entfernt."
                                                 rows={2}
-                                                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                disabled={isReadOnly()}
+                                                className={`flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly() ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                             />
                                             <div className="flex gap-2 items-center pt-2">
                                                 <label className="text-xs text-gray-600 whitespace-nowrap">Schriftfarbe:</label>
                                                 <input
                                                     type="color"
                                                     value={newConfig.welcomeTextColor}
-                                                    onChange={(e) => setNewConfig(prev => ({...prev, welcomeTextColor: e.target.value}))}
-                                                    className="h-10 w-16 border border-gray-300 rounded"
+                                                    onChange={(e) => {
+                                                        if (!isReadOnly()) setNewConfig(prev => ({...prev, welcomeTextColor: e.target.value}));
+                                                    }}
+                                                    disabled={isReadOnly()}
+                                                    className={`h-10 w-16 border border-gray-300 rounded ${isReadOnly() ? 'cursor-not-allowed opacity-50' : ''}`}
                                                     title="Schriftfarbe"
                                                 />
                                                 <input
                                                     type="text"
                                                     value={newConfig.welcomeTextColor}
-                                                    onChange={(e) => setNewConfig(prev => ({...prev, welcomeTextColor: e.target.value}))}
+                                                    onChange={(e) => {
+                                                        if (!isReadOnly()) setNewConfig(prev => ({...prev, welcomeTextColor: e.target.value}));
+                                                    }}
                                                     placeholder="#ffffff"
-                                                    className="w-24 px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                                    disabled={isReadOnly()}
+                                                    className={`w-24 px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${isReadOnly() ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                                 />
                                             </div>
                                         </div>
@@ -1050,26 +1124,35 @@ export default function CaptivePortalPage({ initialNodes }: CaptivePortalPagePro
                                         <div className="flex gap-2 items-start">
                                             <textarea
                                                 value={newConfig.hintText}
-                                                onChange={(e) => setNewConfig(prev => ({...prev, hintText: e.target.value}))}
+                                                onChange={(e) => {
+                                                    if (!isReadOnly()) setNewConfig(prev => ({...prev, hintText: e.target.value}));
+                                                }}
                                                 placeholder="Mit der Nutzung des WLANs erklären Sie sich mit unseren Nutzungsbedingungen einverstanden."
                                                 rows={2}
-                                                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                disabled={isReadOnly()}
+                                                className={`flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly() ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                             />
                                             <div className="flex gap-2 items-center pt-2">
                                                 <label className="text-xs text-gray-600 whitespace-nowrap">Schriftfarbe:</label>
                                                 <input
                                                     type="color"
                                                     value={newConfig.hintTextColor}
-                                                    onChange={(e) => setNewConfig(prev => ({...prev, hintTextColor: e.target.value}))}
-                                                    className="h-10 w-16 border border-gray-300 rounded"
+                                                    onChange={(e) => {
+                                                        if (!isReadOnly()) setNewConfig(prev => ({...prev, hintTextColor: e.target.value}));
+                                                    }}
+                                                    disabled={isReadOnly()}
+                                                    className={`h-10 w-16 border border-gray-300 rounded ${isReadOnly() ? 'cursor-not-allowed opacity-50' : ''}`}
                                                     title="Schriftfarbe"
                                                 />
                                                 <input
                                                     type="text"
                                                     value={newConfig.hintTextColor}
-                                                    onChange={(e) => setNewConfig(prev => ({...prev, hintTextColor: e.target.value}))}
+                                                    onChange={(e) => {
+                                                        if (!isReadOnly()) setNewConfig(prev => ({...prev, hintTextColor: e.target.value}));
+                                                    }}
                                                     placeholder="#ffffff"
-                                                    className="w-24 px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                                    disabled={isReadOnly()}
+                                                    className={`w-24 px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${isReadOnly() ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                                 />
                                             </div>
                                         </div>
@@ -1082,9 +1165,12 @@ export default function CaptivePortalPage({ initialNodes }: CaptivePortalPagePro
                                             <input
                                                 type="text"
                                                 value={newConfig.buttonText}
-                                                onChange={(e) => setNewConfig(prev => ({...prev, buttonText: e.target.value}))}
+                                                onChange={(e) => {
+                                                    if (!isReadOnly()) setNewConfig(prev => ({...prev, buttonText: e.target.value}));
+                                                }}
                                                 placeholder="Internet"
-                                                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                disabled={isReadOnly()}
+                                                className={`flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly() ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                             />
                                             <div className="flex flex-col gap-2">
                                                 <div className="flex gap-2 items-center">
@@ -1092,16 +1178,22 @@ export default function CaptivePortalPage({ initialNodes }: CaptivePortalPagePro
                                                     <input
                                                         type="color"
                                                         value={newConfig.buttonColor}
-                                                        onChange={(e) => setNewConfig(prev => ({...prev, buttonColor: e.target.value}))}
-                                                        className="h-10 w-16 border border-gray-300 rounded"
+                                                        onChange={(e) => {
+                                                            if (!isReadOnly()) setNewConfig(prev => ({...prev, buttonColor: e.target.value}));
+                                                        }}
+                                                        disabled={isReadOnly()}
+                                                        className={`h-10 w-16 border border-gray-300 rounded ${isReadOnly() ? 'cursor-not-allowed opacity-50' : ''}`}
                                                         title="Button Hintergrundfarbe"
                                                     />
                                                     <input
                                                         type="text"
                                                         value={newConfig.buttonColor}
-                                                        onChange={(e) => setNewConfig(prev => ({...prev, buttonColor: e.target.value}))}
+                                                        onChange={(e) => {
+                                                            if (!isReadOnly()) setNewConfig(prev => ({...prev, buttonColor: e.target.value}));
+                                                        }}
                                                         placeholder="#ff9800"
-                                                        className="w-24 px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                                        disabled={isReadOnly()}
+                                                        className={`w-24 px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${isReadOnly() ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                                     />
                                                 </div>
                                                 <div className="flex gap-2 items-center">
@@ -1109,16 +1201,22 @@ export default function CaptivePortalPage({ initialNodes }: CaptivePortalPagePro
                                                     <input
                                                         type="color"
                                                         value={newConfig.buttonTextColor}
-                                                        onChange={(e) => setNewConfig(prev => ({...prev, buttonTextColor: e.target.value}))}
-                                                        className="h-10 w-16 border border-gray-300 rounded"
+                                                        onChange={(e) => {
+                                                            if (!isReadOnly()) setNewConfig(prev => ({...prev, buttonTextColor: e.target.value}));
+                                                        }}
+                                                        disabled={isReadOnly()}
+                                                        className={`h-10 w-16 border border-gray-300 rounded ${isReadOnly() ? 'cursor-not-allowed opacity-50' : ''}`}
                                                         title="Schriftfarbe"
                                                     />
                                                     <input
                                                         type="text"
                                                         value={newConfig.buttonTextColor}
-                                                        onChange={(e) => setNewConfig(prev => ({...prev, buttonTextColor: e.target.value}))}
+                                                        onChange={(e) => {
+                                                            if (!isReadOnly()) setNewConfig(prev => ({...prev, buttonTextColor: e.target.value}));
+                                                        }}
                                                         placeholder="#000000"
-                                                        className="w-24 px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                                        disabled={isReadOnly()}
+                                                        className={`w-24 px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${isReadOnly() ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                                     />
                                                 </div>
                                             </div>
@@ -1131,9 +1229,12 @@ export default function CaptivePortalPage({ initialNodes }: CaptivePortalPagePro
                                         <input
                                             type="url"
                                             value={newConfig.redirectUrl}
-                                            onChange={(e) => setNewConfig({...newConfig, redirectUrl: e.target.value})}
+                                            onChange={(e) => {
+                                                if (!isReadOnly()) setNewConfig({...newConfig, redirectUrl: e.target.value});
+                                            }}
                                             placeholder="https://example.com"
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            disabled={isReadOnly()}
+                                            className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly() ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                         />
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1144,8 +1245,11 @@ export default function CaptivePortalPage({ initialNodes }: CaptivePortalPagePro
                                             <input
                                                 type="number"
                                                 value={newConfig.sessionTimeout}
-                                                onChange={(e) => setNewConfig({...newConfig, sessionTimeout: parseInt(e.target.value)})}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                onChange={(e) => {
+                                                    if (!isReadOnly()) setNewConfig({...newConfig, sessionTimeout: parseInt(e.target.value)});
+                                                }}
+                                                disabled={isReadOnly()}
+                                                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly() ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                                 min="300"
                                                 max="86400"
                                             />
@@ -1157,8 +1261,11 @@ export default function CaptivePortalPage({ initialNodes }: CaptivePortalPagePro
                                             <input
                                                 type="number"
                                                 value={newConfig.maxBandwidth}
-                                                onChange={(e) => setNewConfig({...newConfig, maxBandwidth: parseInt(e.target.value)})}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                onChange={(e) => {
+                                                    if (!isReadOnly()) setNewConfig({...newConfig, maxBandwidth: parseInt(e.target.value)});
+                                                }}
+                                                disabled={isReadOnly()}
+                                                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly() ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                                 min="1"
                                                 max="10000"
                                             />
@@ -1171,9 +1278,12 @@ export default function CaptivePortalPage({ initialNodes }: CaptivePortalPagePro
                                         <input
                                             type="text"
                                             value={newConfig.termsLinkText}
-                                            onChange={(e) => setNewConfig({...newConfig, termsLinkText: e.target.value})}
+                                            onChange={(e) => {
+                                                if (!isReadOnly()) setNewConfig({...newConfig, termsLinkText: e.target.value});
+                                            }}
                                             placeholder="Nutzungsbedingungen anzeigen"
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            disabled={isReadOnly()}
+                                            className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly() ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                         />
                                     </div>
                                     <div>
@@ -1182,9 +1292,12 @@ export default function CaptivePortalPage({ initialNodes }: CaptivePortalPagePro
                                         </label>
                                         <textarea
                                             value={newConfig.welcomeMessage}
-                                            onChange={(e) => setNewConfig({...newConfig, welcomeMessage: e.target.value})}
+                                            onChange={(e) => {
+                                                if (!isReadOnly()) setNewConfig({...newConfig, welcomeMessage: e.target.value});
+                                            }}
                                             rows={3}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            disabled={isReadOnly()}
+                                            className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly() ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                         />
                                     </div>
                                     <div>
@@ -1193,28 +1306,36 @@ export default function CaptivePortalPage({ initialNodes }: CaptivePortalPagePro
                                         </label>
                                         <textarea
                                             value={newConfig.termsOfService}
-                                            onChange={(e) => setNewConfig({...newConfig, termsOfService: e.target.value})}
+                                            onChange={(e) => {
+                                                if (!isReadOnly()) setNewConfig({...newConfig, termsOfService: e.target.value});
+                                            }}
                                             rows={4}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            disabled={isReadOnly()}
+                                            className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly() ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                         />
                                     </div>
                                     <div className="flex items-center">
                                         <input
                                             type="checkbox"
                                             checked={newConfig.isActive}
-                                            onChange={(e) => setNewConfig({...newConfig, isActive: e.target.checked})}
-                                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                            onChange={(e) => {
+                                                if (!isReadOnly()) setNewConfig({...newConfig, isActive: e.target.checked});
+                                            }}
+                                            disabled={isReadOnly()}
+                                            className={`h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded ${isReadOnly() ? 'cursor-not-allowed opacity-50' : ''}`}
                                         />
                                         <label className="ml-2 block text-sm text-gray-900">
                                             Portal aktiv
                                         </label>
                                     </div>
-                                    <button
-                                        type="submit"
-                                        className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    >
-                                        {editingConfigId ? 'Konfiguration speichern' : 'Konfiguration erstellen'}
-                                    </button>
+                                    {!isReadOnly() && (
+                                        <button
+                                            type="submit"
+                                            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            {editingConfigId ? 'Konfiguration speichern' : 'Konfiguration erstellen'}
+                                        </button>
+                                    )}
                                     {editingConfigId && (
                                         <button
                                             type="button"
@@ -1278,13 +1399,72 @@ export default function CaptivePortalPage({ initialNodes }: CaptivePortalPagePro
     );
 }
 
-export async function getServerSideProps() {
+// Helper-Funktion: Finde alle Nachfolger-Nodes eines bestimmten Nodes
+async function findAllDescendants(nodeId: string): Promise<string[]> {
+    const descendants: string[] = [];
+    const directChildren = await prisma.treeNode.findMany({
+        where: { parentId: nodeId }
+    });
+
+    for (const child of directChildren) {
+        descendants.push(child.id);
+        const grandChildren = await findAllDescendants(child.id);
+        descendants.push(...grandChildren);
+    }
+
+    return descendants;
+}
+
+export async function getServerSideProps(context: any) {
     try {
-        const nodes = await prisma.treeNode.findMany({
-            orderBy: {
-                name: 'asc'
-            }
-        });
+        const session = await getServerSession(context.req, context.res, authOptions);
+        const token = await getToken({ req: context.req, secret: process.env.NEXTAUTH_SECRET });
+
+        if (!session) {
+            return {
+                redirect: {
+                    destination: '/login',
+                    permanent: false,
+                },
+            };
+        }
+
+        let nodes;
+        
+        if (token?.role === 'SUPERADMIN') {
+            // SUPERADMIN sieht alle Nodes
+            nodes = await prisma.treeNode.findMany({
+                orderBy: {
+                    name: 'asc'
+                }
+            });
+        } else if (token?.role === 'ADMIN' && token?.nodeId && token.nodeId !== 'NULL' && token.nodeId !== null) {
+            // ADMIN sieht nur Nodes ab seinem zugewiesenen Kunden
+            const adminNodeId = token.nodeId as string;
+            
+            // Finde alle Nachfolger-Nodes
+            const descendantIds = await findAllDescendants(adminNodeId);
+            const allowedNodeIds = [adminNodeId, ...descendantIds];
+            
+            nodes = await prisma.treeNode.findMany({
+                where: {
+                    id: {
+                        in: allowedNodeIds
+                    }
+                },
+                orderBy: {
+                    name: 'asc'
+                }
+            });
+        } else {
+            // USER oder andere Rollen haben keinen Zugriff
+            return {
+                redirect: {
+                    destination: '/settings',
+                    permanent: false,
+                },
+            };
+        }
 
         // Convert Date objects to ISO strings
         const serializedNodes = nodes.map((node: any) => ({

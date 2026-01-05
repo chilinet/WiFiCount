@@ -56,7 +56,7 @@ const Tree = forwardRef<TreeRef, TreeProps>(({
     const [newNodeCategory, setNewNodeCategory] = useState<NodeCategory>('KUNDE');
 
     useEffect(() => {
-        if (Array.isArray(initialNodes)) {
+        if (Array.isArray(initialNodes) && initialNodes.length > 0) {
             setNodes(initialNodes);
         }
     }, [initialNodes]);
@@ -82,8 +82,11 @@ const Tree = forwardRef<TreeRef, TreeProps>(({
         loadTree
     }));
 
+    // Nur laden, wenn initialNodes leer sind oder nicht vorhanden
     useEffect(() => {
-        loadTree();
+        if (!initialNodes || initialNodes.length === 0) {
+            loadTree();
+        }
     }, []);
 
     const handleNodeSelect = (node: TreeNode) => {
@@ -183,9 +186,39 @@ const Tree = forwardRef<TreeRef, TreeProps>(({
             }));
     };
 
+    // Wenn kein Root-Node gefunden wird (parentId === null), finde den Node, der nicht als parentId vorkommt
+    // Dies ist der Fall, wenn gefilterte Nodes geladen werden (z.B. für ADMIN-Benutzer)
+    const findRootNodes = (): TreeNode[] => {
+        const rootNodes = buildTree(null);
+        if (rootNodes.length > 0) {
+            return rootNodes;
+        }
+        
+        // Wenn kein Root-Node gefunden wurde, finde Nodes, deren parentId nicht in der Node-Liste vorhanden ist
+        const nodeIds = new Set(nodes.map(n => n.id));
+        const rootCandidates = nodes.filter(node => !nodeIds.has(node.parentId || ''));
+        
+        if (rootCandidates.length > 0) {
+            // Baue den Baum ausgehend von diesen Root-Kandidaten
+            const buildTreeFromRoots = (rootIds: string[]): TreeNode[] => {
+                return rootIds
+                    .map(rootId => nodes.find(n => n.id === rootId))
+                    .filter((node): node is TreeNode => node !== undefined)
+                    .map((node) => ({
+                        ...node,
+                        children: buildTree(node.id),
+                    }));
+            };
+            
+            return buildTreeFromRoots(rootCandidates.map(n => n.id));
+        }
+        
+        return [];
+    };
+
     console.log('buildTree:', buildTree());
     console.log('nodes:', nodes);
-    const tree = buildTree();
+    const tree = findRootNodes();
 
     if (!tree.length) {
         return (

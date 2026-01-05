@@ -7,6 +7,7 @@ export default function Settings() {
     const router = useRouter();
     const { data: session } = useSession();
     const isSuperAdmin = session?.user?.role === UserRole.SUPERADMIN;
+    const isAdmin = session?.user?.role === UserRole.ADMIN;
 
     const settings = [
         {
@@ -28,6 +29,8 @@ export default function Settings() {
                 icon: DevicePhoneMobileIcon,
                 href: '/settings/devices',
             },
+        ] : []),
+        ...((isSuperAdmin || isAdmin) ? [
             {
                 title: 'Captive Portal',
                 description: 'Verwalten Sie Captive Portal Konfigurationen',

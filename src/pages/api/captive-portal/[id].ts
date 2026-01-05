@@ -1,7 +1,51 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { prisma } from '@/lib/prisma';
+import { getToken } from 'next-auth/jwt';
+
+// Helper-Funktion: Finde alle Nachfolger-Nodes eines bestimmten Nodes
+async function findAllDescendants(nodeId: string): Promise<string[]> {
+    const descendants: string[] = [];
+    const directChildren = await prisma.treeNode.findMany({
+        where: { parentId: nodeId }
+    });
+
+    for (const child of directChildren) {
+        descendants.push(child.id);
+        const grandChildren = await findAllDescendants(child.id);
+        descendants.push(...grandChildren);
+    }
+
+    return descendants;
+}
+
+// Helper-Funktion: Prüfe ob ein Node für den Benutzer zugänglich ist
+async function isNodeAccessible(nodeId: string, userRole: string | undefined, userNodeId: string | undefined): Promise<boolean> {
+    if (userRole === 'SUPERADMIN') {
+        return true;
+    }
+    
+    if (userRole === 'ADMIN' && userNodeId && userNodeId !== 'NULL' && userNodeId !== null) {
+        const descendantIds = await findAllDescendants(userNodeId);
+        const allowedNodeIds = [userNodeId, ...descendantIds];
+        return allowedNodeIds.includes(nodeId);
+    }
+    
+    return false;
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+    // Prüfe Authentifizierung
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    
+    if (!token) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
+    // Prüfe ob Benutzer SUPERADMIN oder ADMIN ist
+    if (token.role !== 'SUPERADMIN' && token.role !== 'ADMIN') {
+        return res.status(403).json({ error: 'Forbidden: Only SUPERADMIN and ADMIN can access this resource' });
+    }
+    
     const { id } = req.query;
 
     if (!id || typeof id !== 'string') {
@@ -13,7 +57,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             let config;
             try {
                 config = await prisma.captivePortalConfig.findUnique({
-                    where: { id }
+                    where: { id },
+                    include: {
+                        node: {
+                            select: {
+                                id: true
+                            }
+                        }
+                    }
                 });
             } catch (error: any) {
                 // Falls die neuen Farbfelder noch nicht in der DB existieren, verwende select
@@ -43,7 +94,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                             termsLinkText: true,
                             description: true,
                             createdAt: true,
-                            updatedAt: true
+                            updatedAt: true,
+                            node: {
+                                select: {
+                                    id: true
+                                }
+                            }
                         } as any
                     });
                 } else {
@@ -53,6 +109,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             if (!config) {
                 return res.status(404).json({ error: 'Config not found' });
+            }
+            
+            // Prüfe ob der Benutzer Zugriff auf den Node dieser Config hat
+            if (config.nodeId) {
+                const hasAccess = await isNodeAccessible(config.nodeId, token.role as string, token.nodeId as string | undefined);
+                if (!hasAccess) {
+                    return res.status(403).json({ error: 'Forbidden: You do not have access to this config' });
+                }
             }
 
             // Konvertiere Date-Objekte zu ISO-Strings und füge Standardwerte für fehlende Felder hinzu
@@ -73,6 +137,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
     } else if (req.method === 'PUT') {
         try {
+            // Hole zuerst die bestehende Config, um den nodeId zu prüfen
+            let existingConfig;
+            try {
+                existingConfig = await prisma.captivePortalConfig.findUnique({
+                    where: { id },
+                    select: {
+                        nodeId: true
+                    }
+                });
+            } catch (error: any) {
+                return res.status(500).json({ error: 'Error fetching config' });
+            }
+            
+            if (!existingConfig) {
+                return res.status(404).json({ error: 'Config not found' });
+            }
+            
+            // Prüfe ob der Benutzer Zugriff auf den Node dieser Config hat
+            if (existingConfig.nodeId) {
+                const hasAccess = await isNodeAccessible(existingConfig.nodeId, token.role as string, token.nodeId as string | undefined);
+                if (!hasAccess) {
+                    return res.status(403).json({ error: 'Forbidden: You do not have access to this config' });
+                }
+            }
+            
             const { 
                 portalName, 
                 welcomeMessage, 
@@ -201,7 +290,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             let existingConfig;
             try {
                 existingConfig = await prisma.captivePortalConfig.findUnique({
-                    where: { id }
+                    where: { id },
+                    select: {
+                        nodeId: true
+                    }
                 });
             } catch (error: any) {
                 // Falls die neuen Farbfelder noch nicht in der DB existieren, verwende select
@@ -240,6 +332,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             if (!existingConfig) {
                 return res.status(404).json({ error: 'Config not found' });
+            }
+            
+            // Prüfe ob der Benutzer Zugriff auf den Node dieser Config hat
+            if (existingConfig.nodeId) {
+                const hasAccess = await isNodeAccessible(existingConfig.nodeId, token.role as string, token.nodeId as string | undefined);
+                if (!hasAccess) {
+                    return res.status(403).json({ error: 'Forbidden: You do not have access to this config' });
+                }
             }
 
             await prisma.captivePortalConfig.delete({

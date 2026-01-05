@@ -5,7 +5,7 @@ import { getServerSession, Session } from 'next-auth';
 import Layout from '@/components/Layout';
 import { prisma } from '@/lib/prisma';
 import { User } from '@prisma/client';
-import { PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, UserIcon } from '@heroicons/react/24/outline';
 import authOptions from '@/pages/api/auth/[...nextauth]';
 import { getToken } from "next-auth/jwt";
 
@@ -31,6 +31,7 @@ export default function UsersPage({ users }: UsersPageProps) {
 
     const router = useRouter();
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isImpersonating, setIsImpersonating] = useState<string | null>(null);
 
     const handleDelete = async (userId: string) => {
         if (!confirm('Möchten Sie diesen Benutzer wirklich löschen?')) return;
@@ -51,6 +52,48 @@ export default function UsersPage({ users }: UsersPageProps) {
             alert('Fehler beim Löschen des Benutzers');
         } finally {
             setIsDeleting(false);
+        }
+    };
+
+    const handleImpersonate = async (userId: string, userEmail: string) => {
+        if (!confirm('Möchten Sie sich als dieser Benutzer anmelden?')) return;
+        
+        setIsImpersonating(userId);
+        try {
+            // Rufe die Impersonation-API auf, die einen Cookie setzt
+            const response = await fetch('/api/auth/impersonate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include', // Wichtig: Cookies müssen mitgesendet werden
+                body: JSON.stringify({ userEmail }),
+            });
+
+            if (response.ok) {
+                // Jetzt melden wir uns mit signIn an, der den Cookie liest
+                const { signIn } = await import('next-auth/react');
+                const result = await signIn('credentials', {
+                    email: userEmail,
+                    password: '', // Wird nicht benötigt, da Impersonation über Cookie erkannt wird
+                    redirect: false,
+                });
+
+                if (result?.ok) {
+                    // Weiterleitung zum Dashboard
+                    window.location.href = '/dashboard';
+                } else {
+                    alert('Fehler bei der Impersonation. Bitte versuchen Sie es erneut.');
+                }
+            } else {
+                const error = await response.json();
+                alert(error.error || 'Fehler bei der Impersonation');
+            }
+        } catch (error) {
+            console.error('Fehler bei der Impersonation:', error);
+            alert('Fehler bei der Impersonation');
+        } finally {
+            setIsImpersonating(null);
         }
     };
 
@@ -129,21 +172,35 @@ export default function UsersPage({ users }: UsersPageProps) {
                                     </td>
                                 )}
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <button
-                                        onClick={() => router.push(`/settings/users/${user.id}`)}
-                                        className="text-blue-600 hover:text-blue-900 mr-4"
-                                    >
-                                        <PencilIcon className="h-5 w-5" />
-                                    </button>
-                                    {session.user.role === 'SUPERADMIN' && (
+                                    <div className="flex justify-end items-center space-x-2">
                                         <button
-                                            onClick={() => handleDelete(user.id)}
-                                            disabled={isDeleting}
-                                            className="text-red-600 hover:text-red-900"
+                                            onClick={() => router.push(`/settings/users/${user.id}`)}
+                                            className="text-blue-600 hover:text-blue-900"
+                                            title="Bearbeiten"
                                         >
-                                            <TrashIcon className="h-5 w-5" />
+                                            <PencilIcon className="h-5 w-5" />
                                         </button>
-                                    )}
+                                        {session.user.role === 'SUPERADMIN' && (
+                                            <>
+                                                <button
+                                                    onClick={() => handleImpersonate(user.id, user.email || '')}
+                                                    disabled={isImpersonating === user.id}
+                                                    className="text-green-600 hover:text-green-900 disabled:opacity-50"
+                                                    title="Als Benutzer anmelden"
+                                                >
+                                                    <UserIcon className="h-5 w-5" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(user.id)}
+                                                    disabled={isDeleting}
+                                                    className="text-red-600 hover:text-red-900 disabled:opacity-50"
+                                                    title="Löschen"
+                                                >
+                                                    <TrashIcon className="h-5 w-5" />
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
                                 </td>
                             </tr>
                         ))}

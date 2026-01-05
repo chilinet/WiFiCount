@@ -32,6 +32,8 @@ declare module 'next-auth' {
             } | null;
         };
         expires: string;
+        isImpersonated?: boolean;
+        impersonatedBy?: string;
     }
 }
 
@@ -48,5 +50,7 @@ declare module 'next-auth/jwt' {
             name: string;
             category: string;
         } | null;
+        isImpersonated?: boolean;
+        impersonatedBy?: string;
     }
 } 
